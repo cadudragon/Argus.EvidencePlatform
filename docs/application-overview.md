@@ -11,7 +11,7 @@ Hoje ele já funciona como:
 - timeline de artefactos por caso;
 - criação e consulta de jobs de export;
 - trilha de auditoria por caso;
-- pontos adicionais de `activate`, `pong` e `fcm-token` que já existem no código atual.
+- pontos adicionais de `activate`, `pong`, `fcm-token` e `notifications` que já existem no código atual.
 
 Ele **não é** hoje um sistema cloud endurecido nem um produto final de compliance.  
 O projeto está em `functional mode`, com foco em validação local e evolução incremental.
@@ -189,6 +189,22 @@ Endpoints:
 - `POST /api/pong`
 - `PUT /api/fcm-token`
 
+### 7. Notifications
+
+Responsabilidade:
+
+- receber snapshots de notificações do device;
+- validar `deviceId + caseId`;
+- persistir metadata relacional com trilha de auditoria.
+
+Slice:
+
+- `Notifications/IngestNotification`
+
+Endpoint:
+
+- `POST /api/notifications`
+
 ## Inventário completo das slices no código
 
 ### Slices HTTP públicas
@@ -203,6 +219,7 @@ Endpoints:
 - `Enrollment/ActivateDevice`
 - `Device/RecordPong`
 - `Device/BindFcmToken`
+- `Notifications/IngestNotification`
 
 ### Slice interna sem endpoint público
 
@@ -408,6 +425,35 @@ Responses:
 - `200 OK`
 - `410 Gone`
 
+### `POST /api/notifications`
+
+Ingere um snapshot de notificação.
+
+Request:
+
+```json
+{
+  "deviceId": "android-0123456789abcdef",
+  "caseId": "CASE-001",
+  "sha256": "3f786850e387550fdab836ed7e6dc881de23001b",
+  "captureTimestamp": 1767225600000,
+  "packageName": "com.whatsapp",
+  "title": "Sender",
+  "text": "Message preview",
+  "bigText": "Expanded message preview",
+  "timestamp": 1767225605000,
+  "category": "msg"
+}
+```
+
+Responses:
+
+- `200 OK`
+- `400 Bad Request`
+- `404 Not Found`
+- `409 Conflict`
+- `410 Gone`
+
 ## Fluxo funcional principal
 
 ### Fluxo 1: caso + artefacto + timeline
@@ -527,6 +573,7 @@ Invoke-RestMethod `
 - `Enrollment/ActivateDevice`
 - `Device/RecordPong`
 - `Device/BindFcmToken`
+- `Notifications/IngestNotification`
 - `ActivationTokens/IssueActivationToken` interno
 
 No diretório `tests/`, a cobertura dedicada identificada com clareza hoje está concentrada nas slices do núcleo `Cases/Evidence/Exports/Audit`.
@@ -561,7 +608,7 @@ Se quiseres usar o backend hoje sem olhar para o código:
 4. envia ficheiros em `POST /api/evidence/artifacts`
 5. consulta timeline, export e audit
 
-Os endpoints `activate`, `pong` e `fcm-token` também já existem no código atual, mas a espinha dorsal validada do sistema continua a ser:
+Os endpoints `activate`, `pong`, `fcm-token` e `notifications` também já existem no código atual, mas a espinha dorsal validada do sistema continua a ser:
 
 - `Cases`
 - `Evidence`

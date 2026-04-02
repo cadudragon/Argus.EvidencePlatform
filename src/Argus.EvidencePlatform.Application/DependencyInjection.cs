@@ -3,6 +3,7 @@ using Argus.EvidencePlatform.Contracts.Cases;
 using Argus.EvidencePlatform.Contracts.Device;
 using Argus.EvidencePlatform.Contracts.Enrollment;
 using Argus.EvidencePlatform.Contracts.Exports;
+using Argus.EvidencePlatform.Contracts.Notifications;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<PongRequest>, PongRequestValidator>();
         services.AddScoped<IValidator<UpdateFcmTokenRequest>, UpdateFcmTokenRequestValidator>();
         services.AddScoped<IValidator<RequestScreenshotCommandRequest>, RequestScreenshotCommandRequestValidator>();
+        services.AddScoped<IValidator<IngestNotificationRequest>, IngestNotificationRequestValidator>();
 
         return services;
     }

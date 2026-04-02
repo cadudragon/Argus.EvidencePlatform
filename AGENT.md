@@ -90,6 +90,13 @@ Implementation detail:
 - Gzip support is intentionally scoped to `/api/screenshots` in [Program.cs](C:\Src\Argus.EvidencePlatform\src\Argus.EvidencePlatform.Api\Program.cs)
 - Do not reintroduce global request decompression unless the contract changes
 
+### Notification Ingestion
+
+- `POST /api/notifications`
+- Plain JSON only
+- No gzip
+- Persists notification metadata in PostgreSQL after validating `deviceId + caseId`
+
 ### On-Demand Screenshot Command
 
 - `POST /api/device-commands/screenshot`
@@ -128,7 +135,6 @@ The export helper downloads screenshots for a case into a local folder:
 
 ## Known Technical Constraints
 
-- The current Android app still posts `/api/notifications`; that endpoint is not implemented yet and local logs will show repeated `404`s.
 - The screenshot ingestion contract uses `captureTimestamp` as Unix epoch milliseconds from Android. Backend code already normalizes this.
 - Local Firebase testing depends on a valid `fcmToken` being persisted for the active `deviceId`.
 

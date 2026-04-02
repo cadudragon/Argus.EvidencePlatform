@@ -188,6 +188,26 @@ public sealed class InfrastructureBootstrapService(
 
             create unique index if not exists "IX_fcm_token_bindings_DeviceId"
                 on argus.fcm_token_bindings ("DeviceId");
+
+            create table if not exists argus.notification_captures
+            (
+                "Id" uuid primary key,
+                "CaseId" uuid not null,
+                "CaseExternalId" character varying(128) not null,
+                "DeviceId" character varying(128) not null,
+                "Sha256" character varying(128) not null,
+                "CaptureTimestamp" timestamp with time zone not null,
+                "PackageName" character varying(256) not null,
+                "Title" character varying(512) null,
+                "Text" character varying(4096) null,
+                "BigText" character varying(16384) null,
+                "NotificationTimestamp" timestamp with time zone not null,
+                "Category" character varying(128) null,
+                "ReceivedAt" timestamp with time zone not null
+            );
+
+            create index if not exists "IX_notification_captures_CaseId_CaptureTimestamp"
+                on argus.notification_captures ("CaseId", "CaptureTimestamp");
             """,
             cancellationToken);
     }

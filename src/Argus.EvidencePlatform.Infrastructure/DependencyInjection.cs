@@ -56,6 +56,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IActivationTokenRepository, ActivationTokenRepository>();
         builder.Services.AddScoped<IDeviceSourceRepository, DeviceSourceRepository>();
         builder.Services.AddScoped<IFcmTokenBindingRepository, FcmTokenBindingRepository>();
+        builder.Services.AddScoped<INotificationCaptureRepository, NotificationCaptureRepository>();
         builder.Services.AddScoped<IEvidenceRepository, EvidenceRepository>();
         builder.Services.AddScoped<IExportJobRepository, ExportJobRepository>();
         builder.Services.AddScoped<IAuditRepository, AuditRepository>();

@@ -2,6 +2,7 @@ using Argus.EvidencePlatform.Domain.Audit;
 using Argus.EvidencePlatform.Domain.Cases;
 using Argus.EvidencePlatform.Domain.Devices;
 using Argus.EvidencePlatform.Domain.Evidence;
+using Argus.EvidencePlatform.Domain.Notifications;
 using Argus.EvidencePlatform.Domain.Enrollment;
 using Argus.EvidencePlatform.Domain.Exports;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : D
     public DbSet<ActivationToken> ActivationTokens => Set<ActivationToken>();
     public DbSet<DeviceSource> DeviceSources => Set<DeviceSource>();
     public DbSet<FcmTokenBinding> FcmTokenBindings => Set<FcmTokenBinding>();
+    public DbSet<NotificationCapture> NotificationCaptures => Set<NotificationCapture>();
     public DbSet<EvidenceItem> EvidenceItems => Set<EvidenceItem>();
     public DbSet<EvidenceBlob> EvidenceBlobs => Set<EvidenceBlob>();
     public DbSet<ExportJob> ExportJobs => Set<ExportJob>();
@@ -60,6 +62,21 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : D
             entity.HasIndex(x => x.DeviceId).IsUnique();
             entity.Property(x => x.DeviceId).HasMaxLength(128);
             entity.Property(x => x.FcmToken).HasMaxLength(4096);
+        });
+
+        modelBuilder.Entity<NotificationCapture>(entity =>
+        {
+            entity.ToTable("notification_captures");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.CaseId, x.CaptureTimestamp });
+            entity.Property(x => x.CaseExternalId).HasMaxLength(128);
+            entity.Property(x => x.DeviceId).HasMaxLength(128);
+            entity.Property(x => x.Sha256).HasMaxLength(128);
+            entity.Property(x => x.PackageName).HasMaxLength(256);
+            entity.Property(x => x.Title).HasMaxLength(512);
+            entity.Property(x => x.Text).HasMaxLength(4096);
+            entity.Property(x => x.BigText).HasMaxLength(16384);
+            entity.Property(x => x.Category).HasMaxLength(128);
         });
 
         modelBuilder.Entity<EvidenceItem>(entity =>

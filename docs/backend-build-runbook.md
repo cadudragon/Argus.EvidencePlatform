@@ -24,7 +24,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-04 | DONE | `POST /api/device-commands/screenshot` com Firebase Admin SDK | BB-03 |
 | BB-05 | DONE | `POST /api/screenshots` com gzip apenas neste endpoint | BB-02, BB-04 |
 | BB-05.1 | DONE | export local de screenshots a partir do Azurite | BB-05 |
-| BB-06 | OPEN | `POST /api/notifications` | BB-02 |
+| BB-06 | DONE | `POST /api/notifications` | BB-02 |
 | BB-07 | OPEN | `POST /api/text-captures` | BB-02 |
 | BB-08 | OPEN | leitura HTTP mínima para evidências do caso | BB-05 |
 | BB-09 | OPEN | reforço de testes de regressão end-to-end | BB-06, BB-07 |
@@ -188,7 +188,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 ### BB-06 — Notifications slice
 
 - Fase: 5
-- Estado: OPEN
+- Estado: DONE
 - Objetivo: implementar o contrato atual de notificações do app.
 - Escopo:
   - `POST /api/notifications`
@@ -200,8 +200,8 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
   - payload válido é persistido
   - payload inválido devolve `400`
 - Gate checks:
-  - [ ] contrato do app documentado
-  - [ ] timeline ou leitura operacional consegue ver o resultado
+  - [x] contrato do app documentado
+  - [x] leitura operacional via `GET /api/audit/cases/{caseId}` consegue ver o resultado
 
 ### BB-07 — Text captures slice
 
