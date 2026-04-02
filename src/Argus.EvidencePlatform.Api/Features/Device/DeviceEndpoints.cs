@@ -1,6 +1,7 @@
 using Argus.EvidencePlatform.Api.Validation;
 using Argus.EvidencePlatform.Application.Device.BindFcmToken;
 using Argus.EvidencePlatform.Application.Device.RecordPong;
+using Argus.EvidencePlatform.Application.Device.RequestScreenshot;
 using Argus.EvidencePlatform.Contracts.Device;
 using Wolverine;
 
@@ -19,6 +20,9 @@ public static class DeviceEndpoints
 
         group.MapPut("/fcm-token", UpdateFcmTokenAsync)
             .AddEndpointFilter<ValidationEndpointFilter<UpdateFcmTokenRequest>>();
+
+        group.MapPost("/device-commands/screenshot", RequestScreenshotAsync)
+            .AddEndpointFilter<ValidationEndpointFilter<RequestScreenshotCommandRequest>>();
 
         return builder;
     }
@@ -49,5 +53,23 @@ public static class DeviceEndpoints
         return result == BindFcmTokenOutcome.Success
             ? Results.Ok()
             : Results.StatusCode(StatusCodes.Status410Gone);
+    }
+
+    private static async Task<IResult> RequestScreenshotAsync(
+        RequestScreenshotCommandRequest request,
+        IMessageBus bus,
+        CancellationToken cancellationToken)
+    {
+        var result = await bus.InvokeAsync<RequestScreenshotResult>(
+            new RequestScreenshotCommand(request.DeviceId),
+            cancellationToken);
+
+        return result.Outcome switch
+        {
+            RequestScreenshotOutcome.Success => Results.Accepted($"/api/device-commands/screenshot/{result.Response!.DeviceId}", result.Response),
+            RequestScreenshotOutcome.NotFound => Results.NotFound(),
+            RequestScreenshotOutcome.Gone => Results.StatusCode(StatusCodes.Status410Gone),
+            _ => Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
+        };
     }
 }

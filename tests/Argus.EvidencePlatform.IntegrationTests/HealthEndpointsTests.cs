@@ -43,6 +43,8 @@ public sealed class HealthEndpointsTests : IClassFixture<ApiWebApplicationFactor
 
 public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>
 {
+    public TestDeviceCommandDispatcher DeviceCommandDispatcher { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -61,6 +63,8 @@ public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<IBlobStagingService>();
             services.AddSingleton<IBlobStagingService, TestBlobStagingService>();
+            services.RemoveAll<IDeviceCommandDispatcher>();
+            services.AddSingleton<IDeviceCommandDispatcher>(DeviceCommandDispatcher);
         });
     }
 }
@@ -85,5 +89,22 @@ internal sealed class TestBlobStagingService : IBlobStagingService
             bytes.LongLength,
             sha256,
             Guid.NewGuid().ToString("N"));
+    }
+}
+
+public sealed class TestDeviceCommandDispatcher : IDeviceCommandDispatcher
+{
+    public List<(string DeviceId, string FcmToken)> ScreenshotRequests { get; } = [];
+
+    public DeviceCommandDispatchResult NextResult { get; set; } =
+        new(DeviceCommandDispatchStatus.Success, "test-message-id");
+
+    public Task<DeviceCommandDispatchResult> RequestScreenshotAsync(
+        string deviceId,
+        string fcmToken,
+        CancellationToken cancellationToken)
+    {
+        ScreenshotRequests.Add((deviceId, fcmToken));
+        return Task.FromResult(NextResult);
     }
 }

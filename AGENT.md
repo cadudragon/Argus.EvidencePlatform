@@ -1,0 +1,149 @@
+# Argus EvidencePlatform Agent Notes
+
+## Scope
+
+This repository is the .NET backend for the Android client `com.argus.android`.
+
+Keep this file technical and operational. Do not place soft product rationale here.
+
+Canonical planning references:
+
+- [docs/backend-build-plan.md](C:\Src\Argus.EvidencePlatform\docs\backend-build-plan.md)
+- [docs/backend-build-runbook.md](C:\Src\Argus.EvidencePlatform\docs\backend-build-runbook.md)
+
+## Architecture
+
+- Vertical slices under [src/Argus.EvidencePlatform.Api/Features](C:\Src\Argus.EvidencePlatform\src\Argus.EvidencePlatform.Api\Features)
+- Main slices currently relevant to device ingestion and command delivery:
+  - `Enrollment`
+  - `Device`
+  - `Screenshots`
+  - `Evidence`
+- Application handlers live under [src/Argus.EvidencePlatform.Application](C:\Src\Argus.EvidencePlatform\src\Argus.EvidencePlatform.Application)
+- Infrastructure adapters live under [src/Argus.EvidencePlatform.Infrastructure](C:\Src\Argus.EvidencePlatform\src\Argus.EvidencePlatform.Infrastructure)
+
+## Local Runtime
+
+The local stack assumes Docker Desktop with the Linux engine running.
+
+Dependencies from [compose.yaml](C:\Src\Argus.EvidencePlatform\compose.yaml):
+- PostgreSQL 16
+- Azurite `3.35.0`
+
+Ports:
+- API: `5058`
+- PostgreSQL: `5432`
+- Azurite blob/queue/table: `10000-10002`
+
+Runbooks are scripted in [scripts](C:\Src\Argus.EvidencePlatform\scripts):
+- [ensure-runtime-deps.ps1](C:\Src\Argus.EvidencePlatform\scripts\ensure-runtime-deps.ps1)
+- [start-runtime.ps1](C:\Src\Argus.EvidencePlatform\scripts\start-runtime.ps1)
+- [check-runtime.ps1](C:\Src\Argus.EvidencePlatform\scripts\check-runtime.ps1)
+
+Important:
+- Use the absolute `dotnet.exe` path when the Windows `PATH` is unreliable:
+  - `C:\Program Files\dotnet\dotnet.exe`
+- Use PowerShell script files for multi-step local operations. Inline PowerShell through the terminal shell in this workspace is unreliable and frequently mangles quoting.
+
+## Current Local Paths
+
+These are current local-machine conventions used in this repository workflow:
+
+- API stdout log: `C:\Src\argus-api.stdout.log`
+- API stderr log: `C:\Src\argus-api.stderr.log`
+- Temporary exported screenshots folder: `C:\Src\exported-screenshots`
+- Firebase service-account JSON stays outside the repo and is referenced by user-secrets
+
+## Current Operational Test State
+
+This state is transient. Update it when local testing rotates to a new case or device.
+
+- Last known local Wi-Fi API base URL: `http://192.168.1.68:5058`
+- Current validated Android package id: `com.argus.android`
+- Last working local device id: `android-d4e40efbdeb91b34`
+- Last working local case external id for screenshot tests: `CASE-ACT-20260402-172929`
+
+Treat these values as operational hints, not stable domain constants.
+
+## Current Device-Facing Contracts
+
+### Activation
+
+- `POST /api/activate`
+- Plain JSON only
+- No gzip
+
+### FCM Token Binding
+
+- `PUT /api/fcm-token`
+- Plain JSON only
+
+### Screenshot Ingestion
+
+- `POST /api/screenshots`
+- This is the only current endpoint that accepts request `gzip`
+- Expected transport:
+  - `multipart/form-data`
+  - `Content-Encoding: gzip`
+
+Implementation detail:
+- Gzip support is intentionally scoped to `/api/screenshots` in [Program.cs](C:\Src\Argus.EvidencePlatform\src\Argus.EvidencePlatform.Api\Program.cs)
+- Do not reintroduce global request decompression unless the contract changes
+
+### On-Demand Screenshot Command
+
+- `POST /api/device-commands/screenshot`
+- Command dispatch uses Firebase Admin SDK
+- Message payload currently sent to the Android app:
+  - `{"cmd":"screenshot"}`
+
+The operational helpers are:
+- [request-screenshot.ps1](C:\Src\Argus.EvidencePlatform\scripts\request-screenshot.ps1)
+- [check-latest-screenshots.ps1](C:\Src\Argus.EvidencePlatform\scripts\check-latest-screenshots.ps1)
+- [export-case-screenshots.ps1](C:\Src\Argus.EvidencePlatform\scripts\export-case-screenshots.ps1)
+
+## Firebase Configuration
+
+The backend code currently reads:
+- `Firebase:Enabled`
+- `Firebase:ProjectId`
+- `Firebase:ServiceAccountPath`
+
+For local development, store these with `dotnet user-secrets` on the API project. Do not commit service-account JSON files.
+
+Important:
+- `Firebase:ProjectId` must be the Firebase project id, not the Android package name
+- `Firebase:ServiceAccountPath` must point to a real JSON file on disk
+
+## Storage
+
+Local binary evidence goes to Azurite via `UseDevelopmentStorage=true`.
+
+For screenshots:
+- metadata is stored in PostgreSQL
+- binary content is stored in Azurite blobs
+
+The export helper downloads screenshots for a case into a local folder:
+- [export-case-screenshots.ps1](C:\Src\Argus.EvidencePlatform\scripts\export-case-screenshots.ps1)
+
+## Known Technical Constraints
+
+- The current Android app still posts `/api/notifications`; that endpoint is not implemented yet and local logs will show repeated `404`s.
+- The screenshot ingestion contract uses `captureTimestamp` as Unix epoch milliseconds from Android. Backend code already normalizes this.
+- Local Firebase testing depends on a valid `fcmToken` being persisted for the active `deviceId`.
+
+## What Belongs Here vs Skills
+
+Keep in `AGENT.md`:
+- repository-specific architecture
+- local runtime assumptions
+- exact config keys
+- endpoint transport constraints
+- local infrastructure dependencies
+- current log paths and local runbook conventions
+
+Prefer skills plus scripts for:
+- starting and checking the local stack
+- triggering on-demand screenshots
+- exporting screenshot blobs to local files
+- DB inspection workflows that are repetitive and procedural

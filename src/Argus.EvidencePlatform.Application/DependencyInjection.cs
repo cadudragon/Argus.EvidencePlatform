@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<ActivationRequest>, ActivationRequestValidator>();
         services.AddScoped<IValidator<PongRequest>, PongRequestValidator>();
         services.AddScoped<IValidator<UpdateFcmTokenRequest>, UpdateFcmTokenRequestValidator>();
+        services.AddScoped<IValidator<RequestScreenshotCommandRequest>, RequestScreenshotCommandRequestValidator>();
 
         return services;
     }

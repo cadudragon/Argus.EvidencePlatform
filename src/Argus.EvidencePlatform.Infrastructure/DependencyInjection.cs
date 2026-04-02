@@ -48,6 +48,7 @@ public static class DependencyInjection
         builder.Services.AddSingleton(sp => CreateBlobServiceClient(sp, builder.Configuration));
         builder.Services.AddSingleton<FirebaseAppAccessor>();
         builder.Services.AddHostedService<FirebaseBootstrapService>();
+        builder.Services.AddSingleton<IDeviceCommandDispatcher, FirebaseDeviceCommandDispatcher>();
         builder.Services.AddSingleton<IClock, SystemClock>();
         builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         builder.Services.AddScoped<IBlobStagingService, AzureBlobStagingService>();

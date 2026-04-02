@@ -16,4 +16,10 @@ public sealed class FcmTokenBindingRepository(ArgusDbContext dbContext) : IFcmTo
         return dbContext.FcmTokenBindings
             .SingleOrDefaultAsync(x => x.DeviceId == deviceId, cancellationToken);
     }
+
+    public Task RemoveAsync(FcmTokenBinding entity, CancellationToken cancellationToken)
+    {
+        dbContext.FcmTokenBindings.Remove(entity);
+        return Task.CompletedTask;
+    }
 }

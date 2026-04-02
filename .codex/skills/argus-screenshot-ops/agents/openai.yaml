@@ -1,0 +1,4 @@
+interface:
+  display_name: "Argus Screenshot Ops"
+  short_description: "Trigger, verify, and export Argus screenshot captures"
+  default_prompt: "Use $argus-screenshot-ops to request a screenshot, verify ingestion, and export the resulting images locally."

@@ -4,6 +4,7 @@ using Argus.EvidencePlatform.Api.Features.Device;
 using Argus.EvidencePlatform.Api.Features.Evidence;
 using Argus.EvidencePlatform.Api.Features.Enrollment;
 using Argus.EvidencePlatform.Api.Features.Exports;
+using Argus.EvidencePlatform.Api.Features.Screenshots;
 
 namespace Argus.EvidencePlatform.Api.Features;
 
@@ -17,6 +18,7 @@ public static class FeaturesEndpointRouteBuilderExtensions
         builder.MapAuditEndpoints();
         builder.MapEnrollmentEndpoints();
         builder.MapDeviceEndpoints();
+        builder.MapScreenshotEndpoints();
 
         return builder;
     }

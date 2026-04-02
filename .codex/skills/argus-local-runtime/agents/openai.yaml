@@ -1,0 +1,4 @@
+interface:
+  display_name: "Argus Local Runtime"
+  short_description: "Start and verify the local Argus backend runtime"
+  default_prompt: "Use $argus-local-runtime to bring up and verify the local Argus backend stack on this Windows machine."

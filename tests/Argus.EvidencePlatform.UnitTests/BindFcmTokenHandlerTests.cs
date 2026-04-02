@@ -84,6 +84,16 @@ public sealed class BindFcmTokenHandlerTests
         {
             return Task.FromResult(ExistingBinding is not null && ExistingBinding.DeviceId == deviceId ? ExistingBinding : null);
         }
+
+        public Task RemoveAsync(FcmTokenBinding entity, CancellationToken cancellationToken)
+        {
+            if (ExistingBinding == entity)
+            {
+                ExistingBinding = null;
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeAuditRepository : IAuditRepository

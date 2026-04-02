@@ -6,4 +6,5 @@ public interface IFcmTokenBindingRepository
 {
     Task AddAsync(FcmTokenBinding entity, CancellationToken cancellationToken);
     Task<FcmTokenBinding?> GetByDeviceIdAsync(string deviceId, CancellationToken cancellationToken);
+    Task RemoveAsync(FcmTokenBinding entity, CancellationToken cancellationToken);
 }
