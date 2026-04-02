@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-Argus.EvidencePlatform.Workers-3e93eb89-baa2-42b7-a65f-dd6a823f9672</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="WolverineFx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Argus.EvidencePlatform.Application\Argus.EvidencePlatform.Application.csproj" />
+    <ProjectReference Include="..\Argus.EvidencePlatform.Infrastructure\Argus.EvidencePlatform.Infrastructure.csproj" />
+    <ProjectReference Include="..\Argus.EvidencePlatform.ServiceDefaults\Argus.EvidencePlatform.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>

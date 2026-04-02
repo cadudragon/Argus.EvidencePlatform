@@ -1,0 +1,61 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+out/
+publish/
+artifacts/
+TestResults/
+BenchmarkDotNet.Artifacts/
+
+# Coverage
+coverage/
+coverage-*/
+*.coverage
+*.coveragexml
+coverage.cobertura.xml
+
+# IDEs and editors
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.cache
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.local.json
+appsettings.*.Local.json
+appsettings.*.local.json
+secrets*.json
+service-account*.json
+google-services.json
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+backend.hcl
+terraform.tfvars
+terraform.tfvars.json
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

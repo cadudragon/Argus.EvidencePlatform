@@ -1,0 +1,5 @@
+resource_group_name  = "rg-argusep-shared-tfstate"
+storage_account_name = "stargusepshared12345"
+container_name       = "tfstate"
+key                  = "dev.terraform.tfstate"
+

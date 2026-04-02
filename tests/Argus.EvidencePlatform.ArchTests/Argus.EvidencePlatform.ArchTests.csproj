@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Argus.EvidencePlatform.Api\Argus.EvidencePlatform.Api.csproj" />
+    <ProjectReference Include="..\..\src\Argus.EvidencePlatform.Application\Argus.EvidencePlatform.Application.csproj" />
+    <ProjectReference Include="..\..\src\Argus.EvidencePlatform.Infrastructure\Argus.EvidencePlatform.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Argus.EvidencePlatform.Domain\Argus.EvidencePlatform.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

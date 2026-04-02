@@ -1,0 +1,14 @@
+subscription_id      = "00000000-0000-0000-0000-000000000000"
+postgres_admin_login = "argusadmin"
+
+deploy_workloads = false
+
+# Set these when you are ready to deploy the real workloads.
+# api_image    = "your-registry.azurecr.io/argus-evidence-api:dev"
+# worker_image = "your-registry.azurecr.io/argus-evidence-workers:dev"
+
+tags = {
+  cost-center = "platform"
+  owner       = "backend"
+}
+

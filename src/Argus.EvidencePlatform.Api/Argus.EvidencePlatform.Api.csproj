@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Argus.EvidencePlatform.Application\Argus.EvidencePlatform.Application.csproj" />
+    <ProjectReference Include="..\Argus.EvidencePlatform.Infrastructure\Argus.EvidencePlatform.Infrastructure.csproj" />
+    <ProjectReference Include="..\Argus.EvidencePlatform.Contracts\Argus.EvidencePlatform.Contracts.csproj" />
+    <ProjectReference Include="..\Argus.EvidencePlatform.ServiceDefaults\Argus.EvidencePlatform.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="WolverineFx" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>
