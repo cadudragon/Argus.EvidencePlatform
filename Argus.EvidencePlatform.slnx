@@ -1,13 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Argus.EvidencePlatform.Api/Argus.EvidencePlatform.Api.csproj" />
-    <Project Path="src/Argus.EvidencePlatform.AppHost/Argus.EvidencePlatform.AppHost.csproj" />
     <Project Path="src/Argus.EvidencePlatform.Application/Argus.EvidencePlatform.Application.csproj" />
     <Project Path="src/Argus.EvidencePlatform.Contracts/Argus.EvidencePlatform.Contracts.csproj" />
     <Project Path="src/Argus.EvidencePlatform.Domain/Argus.EvidencePlatform.Domain.csproj" />
     <Project Path="src/Argus.EvidencePlatform.Infrastructure/Argus.EvidencePlatform.Infrastructure.csproj" />
     <Project Path="src/Argus.EvidencePlatform.ServiceDefaults/Argus.EvidencePlatform.ServiceDefaults.csproj" />
-    <Project Path="src/Argus.EvidencePlatform.Workers/Argus.EvidencePlatform.Workers.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Argus.EvidencePlatform.ArchTests/Argus.EvidencePlatform.ArchTests.csproj" />

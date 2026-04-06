@@ -9,7 +9,7 @@ Hoje ele já funciona como:
 - backend HTTP para criação e consulta de casos;
 - backend de ingestão de artefactos binários;
 - timeline de artefactos por caso;
-- criação e consulta de jobs de export;
+- criação e consulta de jobs de export em estado de fila;
 - trilha de auditoria por caso;
 - pontos adicionais de `activate`, `pong`, `fcm-token`, `notifications` e `text-captures` que já existem no código atual.
 
@@ -130,6 +130,11 @@ Fluxo:
 1. pedir um export para um caso;
 2. receber um `exportJobId`;
 3. consultar o estado com `GET`.
+
+Nota operacional:
+
+- o backend ainda não gera package final, manifest final nem artefacto final de export;
+- os exports atuais são metadata de fila e auditoria.
 
 ### 4. Audit
 
@@ -637,7 +642,6 @@ src/
   Argus.EvidencePlatform.Contracts/
   Argus.EvidencePlatform.Domain/
   Argus.EvidencePlatform.Infrastructure/
-  Argus.EvidencePlatform.Workers/
 tests/
   Argus.EvidencePlatform.UnitTests/
   Argus.EvidencePlatform.IntegrationTests/

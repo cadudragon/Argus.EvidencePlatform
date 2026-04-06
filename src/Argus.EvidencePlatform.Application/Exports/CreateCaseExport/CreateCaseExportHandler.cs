@@ -51,9 +51,7 @@ public sealed class CreateCaseExportHandler(
             job.Status.ToString(),
             job.RequestedBy,
             job.RequestedAt,
-            job.CompletedAt,
-            job.ManifestBlobName,
-            job.PackageBlobName);
+            job.CompletedAt);
     }
 
     private static string? NormalizeOptional(string? value)

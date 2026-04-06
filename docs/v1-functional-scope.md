@@ -40,6 +40,9 @@ The following are intentionally deferred while the team validates functional beh
 - production backup, restore, and disaster recovery controls;
 - formal audit review/reporting requirements for external oversight.
 
+These items are deferred as future capabilities, not active runtime behavior.
+They should not remain as placeholder fields in public contracts or domain models unless an approved near-term BB needs them explicitly.
+
 ## Guardrails While Compliance Is Deferred
 
 Deferring compliance does not authorize weakening the data model or deleting extension points.

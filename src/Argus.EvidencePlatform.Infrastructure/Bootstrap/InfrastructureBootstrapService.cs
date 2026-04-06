@@ -282,7 +282,6 @@ public sealed class InfrastructureBootstrapService(
         return new HashSet<string>(
         [
             settings.StagingContainerName,
-            settings.EvidenceContainerName,
             settings.ExportsContainerName
         ],
         StringComparer.OrdinalIgnoreCase);

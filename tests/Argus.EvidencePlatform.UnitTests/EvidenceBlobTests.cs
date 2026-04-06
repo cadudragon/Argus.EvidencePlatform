@@ -27,8 +27,6 @@ public sealed class EvidenceBlobTests
         result.SizeBytes.Should().Be(128);
         result.Sha256.Should().Be("a3b2e636571eaa5c4e8d7d8f1b7d8a9f3ddba9fd5a2da1b8f50c2354d7d10a2e");
         result.StoredAt.Should().Be(storedAt);
-        result.ImmutabilityState.Should().Be("pending");
-        result.LegalHoldState.Should().Be("none");
     }
 
     [Fact]

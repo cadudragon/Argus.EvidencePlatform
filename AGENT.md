@@ -139,8 +139,8 @@ Important:
 Current architecture:
 
 - multi-Firebase support by case is implemented before `BB-08`
-- the next recommended backend block is `BB-07.2`, to clean up non-implemented compliance/scaffold concepts before `BB-08`
-- after `BB-07.2`, the next structural backend block is `BB-07.3`, to move schema evolution to EF Core migrations-first and reduce runtime DDL drift
+- `BB-07.2` cleaned dead compliance/scaffold concepts before `BB-08`
+- the next structural backend block is `BB-07.3`, to move schema evolution to EF Core migrations-first, remove schema bootstrap SQL from the runtime, reconcile the current local database without data loss, and restore full app compatibility after the `BB-07.2` cleanup
 - case creation assigns exactly one active Firebase app for new cases
 - device activation materializes the case assignment, not choose the Firebase app
 - `PUT /api/fcm-token` and `POST /api/device-commands/screenshot` resolve routing from the case/device context
@@ -153,7 +153,9 @@ Local binary evidence goes to Azurite via `UseDevelopmentStorage=true`.
 For screenshots:
 - metadata is stored in PostgreSQL
 - binary content is stored in Azurite blobs
-- recent local screenshot tests have stored blobs in container `staging`; do not assume `evidence` without checking metadata
+- current write path stores screenshot and generic evidence blobs in container `staging`
+- `evidence` is not part of the functional runtime path today
+- `exports` remains a reserved container name for future export materialization, not a completed export pipeline
 
 The export helper downloads screenshots for a case into a local folder:
 - [export-case-screenshots.ps1](C:\Src\Argus.EvidencePlatform\scripts\export-case-screenshots.ps1)
@@ -162,6 +164,7 @@ The export helper downloads screenshots for a case into a local folder:
 
 - The screenshot ingestion contract uses `captureTimestamp` as Unix epoch milliseconds from Android. Backend code already normalizes this.
 - Local Firebase testing depends on a valid `fcmToken` being persisted for the active `deviceId`.
+- After `BB-07.2`, some existing local databases may still contain old schema constraints from the pre-cleanup model. Treat schema reconciliation as part of `BB-07.3`, not as oral context.
 
 ## What Belongs Here vs Skills
 

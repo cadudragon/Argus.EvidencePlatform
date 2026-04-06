@@ -1,6 +1,6 @@
 # Argus Evidence Platform Build Plan
 
-Data: 2026-04-03
+Data: 2026-04-06
 
 ## Escopo e fonte de verdade
 
@@ -339,6 +339,16 @@ Resultado esperado:
 - docs alinhados ao comportamento real
 - menos dívida conceitual antes de `BB-08`
 
+Estado após `BB-07.2`:
+
+- `EvidenceItem` e `EvidenceBlob` permanecem como núcleo real do modelo de evidência
+- o write path real de blobs continua em `staging`
+- `evidenceContainerName` foi removido do runtime e da config por não participar do fluxo funcional atual
+- `ImmutabilityState` e `LegalHoldState` foram removidos do modelo por serem placeholders sem workflow
+- `ManifestBlobName` e `PackageBlobName` foram removidos do modelo e do contrato HTTP de exports
+- o projeto `Workers` e o `AppHost` foram removidos por não terem papel operacional real no backend atual
+- `exports` permanece apenas como nome de container reservado para evolução futura, não como pipeline implementado
+
 ## BB novo antes do BB-08: migrations-first / code-first real
 
 Depois do cleanup conceitual e antes do `BB-08`, o backend deve migrar do bootstrap SQL manual embutido na app para uma estratégia migrations-first com EF Core.
@@ -355,14 +365,19 @@ Diagnóstico atual:
 - não há migrations ativas no repositório
 - o runtime usa bootstrap com `create table`, `alter table` e `create index` em `InfrastructureBootstrapService`
 - o caminho de `MigrateAsync()` existe, mas hoje não é o caminho dominante
+- o cleanup do `BB-07.2` expôs drift real entre modelo e schema em bases locais já existentes
+- a base local atual pode continuar a exigir colunas antigas removidas do modelo, quebrando fluxos já validados com a app
 
 Direção arquitetural vinculativa:
 
 - manter `ArgusDbContext` como fonte de verdade do modelo relacional
 - gerar migrations explícitas e versionadas no repositório
 - usar `MigrateAsync()` como caminho principal de evolução de schema
-- reduzir o bootstrap SQL manual ao mínimo necessário para pré-condições de ambiente, nunca para modelar a aplicação inteira
+- eliminar o bootstrap SQL manual como mecanismo de evolução do schema aplicacional
+- reduzir o bootstrap runtime ao mínimo necessário para pré-condições externas ao schema aplicacional
 - preservar o arranque local simples em `Development`
+- preservar os dados já existentes na base local
+- restaurar compatibilidade funcional com a app no mesmo `BB`
 
 Escopo recomendado:
 
@@ -371,19 +386,24 @@ Escopo recomendado:
 - definir estratégia de baseline para bases locais já existentes sem quebrar o fluxo do developer
 - remover do runtime o SQL manual de schema que passar a estar coberto por migrations
 - manter bootstrap apenas para criação de containers/blob storage e pré-condições externas ao schema aplicacional
+- reconciliar bases locais existentes com as remoções do `BB-07.2`
+- provar que o fluxo `device-commands/screenshot -> /api/screenshots` volta a funcionar sem intervenção manual na base
 
 Princípios para a melhor abordagem:
 
 - migrations devem ser o registo versionado do schema
-- SQL manual só permanece quando EF não modelar bem uma necessidade concreta e justificada
+- SQL manual de schema aplicacional não permanece; deve sair do runtime
 - a experiência local não pode piorar de forma material
 - a transição deve ser incremental e validada com base limpa e base já existente
+- a transição não pode perder dados já existentes na base local do developer
 
 Resultado esperado:
 
 - schema versionado e auditável no próprio repositório
 - menos lógica de DDL espalhada dentro da app
 - base mais previsível para próximos BBs
+- base local existente preservada e reconciliada com o modelo atual
+- app volta a conseguir completar uploads de screenshot sem falha por drift de schema
 
 ## BB futuro: logging leve por agente/caso
 

@@ -23,9 +23,7 @@ public sealed class ExportJobRepository(ArgusDbContext dbContext) : IExportJobRe
                 x.Status.ToString(),
                 x.RequestedBy,
                 x.RequestedAt,
-                x.CompletedAt,
-                x.ManifestBlobName,
-                x.PackageBlobName))
+                x.CompletedAt))
             .SingleOrDefaultAsync(cancellationToken);
     }
 }

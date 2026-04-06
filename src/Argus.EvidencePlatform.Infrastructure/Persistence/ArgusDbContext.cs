@@ -131,8 +131,6 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : D
             entity.Property(x => x.BlobVersionId).HasMaxLength(256);
             entity.Property(x => x.ContentType).HasMaxLength(128);
             entity.Property(x => x.Sha256).HasMaxLength(128);
-            entity.Property(x => x.ImmutabilityState).HasMaxLength(64);
-            entity.Property(x => x.LegalHoldState).HasMaxLength(64);
         });
 
         modelBuilder.Entity<ExportJob>(entity =>
@@ -141,8 +139,6 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : D
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
             entity.Property(x => x.RequestedBy).HasMaxLength(128);
-            entity.Property(x => x.ManifestBlobName).HasMaxLength(1024);
-            entity.Property(x => x.PackageBlobName).HasMaxLength(1024);
         });
 
         modelBuilder.Entity<AuditEntry>(entity =>

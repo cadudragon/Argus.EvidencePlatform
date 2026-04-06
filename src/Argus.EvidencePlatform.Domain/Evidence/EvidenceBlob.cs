@@ -10,8 +10,6 @@ public sealed class EvidenceBlob
     public string ContentType { get; private set; } = string.Empty;
     public long SizeBytes { get; private set; }
     public string Sha256 { get; private set; } = string.Empty;
-    public string ImmutabilityState { get; private set; } = "pending";
-    public string LegalHoldState { get; private set; } = "none";
     public DateTimeOffset StoredAt { get; private set; }
 
     private EvidenceBlob()

@@ -18,8 +18,6 @@ public sealed class GetExportJobHandlerTests
             nameof(ExportJobStatus.Queued),
             "Local Operator",
             new DateTimeOffset(2026, 4, 1, 12, 0, 0, TimeSpan.Zero),
-            null,
-            null,
             null);
         var repository = new FakeExportJobRepository
         {

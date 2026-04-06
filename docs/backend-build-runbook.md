@@ -1,6 +1,6 @@
 # Argus Evidence Platform Build Runbook
 
-Data: 2026-04-03
+Data: 2026-04-06
 
 ## Como usar este runbook
 
@@ -27,7 +27,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-06 | DONE | `POST /api/notifications` | BB-02 |
 | BB-07 | DONE | `POST /api/text-captures` | BB-02 |
 | BB-07.1 | DONE | suporte a múltiplas Firebase apps com roteamento por app ativa | BB-03, BB-04 |
-| BB-07.2 | OPEN | cleanup de scaffolds e conceitos de compliance não implementados | BB-07.1 |
+| BB-07.2 | DONE | cleanup de scaffolds e conceitos de compliance não implementados | BB-07.1 |
 | BB-07.3 | OPEN | migração para migrations-first / code-first real no schema relacional | BB-07.2 |
 | BB-08 | OPEN | leitura HTTP mínima para evidências do caso com streaming HTTP | BB-05, BB-07.3 |
 | BB-08.1 | OPEN | pipeline assíncrono para segmentos de imagem e composição futura de vídeo | BB-08 |
@@ -280,7 +280,7 @@ Plano técnico detalhado:
 ### BB-07.2 — Cleanup de scaffolds e compliance morto
 
 - Fase: 6
-- Estado: OPEN
+- Estado: DONE
 - Objetivo: remover ou rebaixar explicitamente conceitos que hoje parecem funcionais, mas não têm implementação operacional no backend.
 - Escopo:
   - mapear conceitos implementados, scaffolds úteis e conceitos mortos
@@ -294,30 +294,72 @@ Plano técnico detalhado:
   - código e docs deixam de sugerir capacidades inexistentes como se estivessem prontas
   - suite relevante continua verde após o cleanup
 - Gate checks:
-  - [ ] nenhum conceito morto permanece descrito como funcional
-- [ ] nenhum scaffold remanescente fica ambíguo quanto ao seu estado
-- [ ] o backend continua alinhado ao modelo local-first sem parafernália de compliance não usada
+  - [x] nenhum conceito morto permanece descrito como funcional
+  - [x] nenhum scaffold remanescente fica ambíguo quanto ao seu estado
+  - [x] o backend continua alinhado ao modelo local-first sem parafernália de compliance não usada
+
+Inventário final:
+
+- `EvidenceItem`: manter como real
+- `EvidenceBlob`: manter como real
+- `stagingContainerName`: manter como real
+- `exportsContainerName`: manter como scaffold explícito
+- `evidenceContainerName`: remover
+- `ImmutabilityState`: remover
+- `LegalHoldState`: remover
+- `ManifestBlobName`: remover
+- `PackageBlobName`: remover
+- `Argus.EvidencePlatform.Workers`: remover
+- `Argus.EvidencePlatform.AppHost`: remover
+
+Prova executável registada:
+
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.UnitTests\Argus.EvidencePlatform.UnitTests.csproj`
+- `C:\Progra~1\dotnet\dotnet.exe build Argus.EvidencePlatform.slnx`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.IntegrationTests\Argus.EvidencePlatform.IntegrationTests.csproj`
+- `C:\Progra~1\dotnet\dotnet.exe test Argus.EvidencePlatform.slnx`
+
+Resultado observado:
+
+- suite unitária verde
+- build da solution verde sem `Workers` e sem `AppHost`
+- suite de integração verde
+- solution completa verde, incluindo `ArchTests`
 
 ### BB-07.3 — Migrations-first / code-first real
 
 - Fase: 6
 - Estado: OPEN
-- Objetivo: migrar a evolução do schema relacional do backend para uma disciplina migrations-first com EF Core, substituindo o bootstrap SQL manual como fonte dominante de verdade.
+- Objetivo: migrar a evolução do schema relacional do backend para uma disciplina migrations-first com EF Core, substituindo totalmente o bootstrap SQL manual como fonte dominante de verdade e restaurando compatibilidade funcional com a app sem perda de dados.
 - Escopo:
   - introduzir migrations versionadas no repositório
   - gerar baseline coerente com `ArgusDbContext`
   - definir estratégia segura para bases locais limpas e bases locais já existentes
-  - reduzir ou remover DDL manual em `InfrastructureBootstrapService` quando estiver coberto por migrations
+  - remover DDL manual de schema aplicacional em `InfrastructureBootstrapService`
   - manter bootstrap apenas para pré-condições fora do schema aplicacional
+  - reconciliar a base local atual com as remoções do `BB-07.2`
+  - garantir que a app volta a conseguir persistir screenshots e outros uploads sem drift de schema
 - Prova obrigatória:
   - base nova sobe via `MigrateAsync()` sem depender de DDL manual da aplicação
   - base local já existente consegue continuar a arrancar com estratégia controlada de baseline
+  - base local já existente mantém os dados atuais após a transição
+  - fluxo de screenshot com a app volta a fechar end-to-end sem intervenção manual na base
   - suite relevante continua verde
 - Gate checks:
   - [ ] `ArgusDbContext` passa a ser a fonte de verdade do modelo relacional
   - [ ] migrations ficam versionadas e reproduzíveis no repositório
   - [ ] bootstrap SQL manual deixa de ser o caminho principal de evolução de schema
   - [ ] o runtime local continua simples de usar
+  - [ ] o runtime deixa de depender dos scripts SQL manuais de schema
+  - [ ] a transição preserva os dados já existentes na base local
+  - [ ] a app volta a operar contra a base atual sem falhas causadas por colunas antigas
+
+Débito explícito herdado de `BB-07.2`:
+
+- o cleanup removeu campos do modelo como `ImmutabilityState`, `LegalHoldState`, `ManifestBlobName` e `PackageBlobName`
+- a base local existente pode continuar a exigir parte dessas colunas antigas
+- hoje já existe prova real de drift: `POST /api/screenshots` pode falhar com `23502 null value in column "ImmutabilityState"` em bases antigas
+- este débito não será tratado em hotfix avulso; fica incorporado no `BB-07.3`
 
 ### BB-08 — Leitura HTTP mínima das evidências
 

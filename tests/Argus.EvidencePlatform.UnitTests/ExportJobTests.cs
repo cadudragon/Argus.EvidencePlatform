@@ -20,8 +20,6 @@ public sealed class ExportJobTests
         result.Status.Should().Be(ExportJobStatus.Queued);
         result.RequestedAt.Should().Be(requestedAt);
         result.CompletedAt.Should().BeNull();
-        result.ManifestBlobName.Should().BeNull();
-        result.PackageBlobName.Should().BeNull();
     }
 
     [Fact]

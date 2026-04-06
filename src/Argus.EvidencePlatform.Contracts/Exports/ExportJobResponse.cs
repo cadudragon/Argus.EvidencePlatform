@@ -6,6 +6,4 @@ public sealed record ExportJobResponse(
     string Status,
     string RequestedBy,
     DateTimeOffset RequestedAt,
-    DateTimeOffset? CompletedAt,
-    string? ManifestBlobName,
-    string? PackageBlobName);
+    DateTimeOffset? CompletedAt);

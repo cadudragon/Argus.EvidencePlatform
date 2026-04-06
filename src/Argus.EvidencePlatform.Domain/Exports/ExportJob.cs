@@ -8,8 +8,6 @@ public sealed class ExportJob
     public string RequestedBy { get; private set; } = string.Empty;
     public DateTimeOffset RequestedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
-    public string? ManifestBlobName { get; private set; }
-    public string? PackageBlobName { get; private set; }
 
     private ExportJob()
     {
