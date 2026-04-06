@@ -28,7 +28,8 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-07 | DONE | `POST /api/text-captures` | BB-02 |
 | BB-07.1 | DONE | suporte a múltiplas Firebase apps com roteamento por app ativa | BB-03, BB-04 |
 | BB-07.2 | OPEN | cleanup de scaffolds e conceitos de compliance não implementados | BB-07.1 |
-| BB-08 | OPEN | leitura HTTP mínima para evidências do caso com streaming HTTP | BB-05, BB-07.2 |
+| BB-07.3 | OPEN | migração para migrations-first / code-first real no schema relacional | BB-07.2 |
+| BB-08 | OPEN | leitura HTTP mínima para evidências do caso com streaming HTTP | BB-05, BB-07.3 |
 | BB-08.1 | OPEN | pipeline assíncrono para segmentos de imagem e composição futura de vídeo | BB-08 |
 | BB-09 | OPEN | logging leve de solicitações e acessos por agente/caso | BB-08 |
 | BB-10 | OPEN | reforço de testes de regressão end-to-end | BB-06, BB-07, BB-07.1, BB-08, BB-09 |
@@ -64,7 +65,8 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-07 | text captures slice | 5 | BB-02 |
 | BB-07.1 | multi-Firebase apps por caso | 6 | BB-03, BB-04 |
 | BB-07.2 | cleanup de scaffolds e compliance morto | 6 | BB-07.1 |
-| BB-08 | leitura HTTP mínima das evidências | 6 | BB-05, BB-07.2 |
+| BB-07.3 | migrations-first / code-first real | 6 | BB-07.2 |
+| BB-08 | leitura HTTP mínima das evidências | 6 | BB-05, BB-07.3 |
 | BB-08.1 | pipeline assíncrono de segmentos e vídeo | 6 | BB-08 |
 | BB-09 | logging leve por agente/caso | 6 | BB-08 |
 | BB-10 | endurecimento de testes e regressão | 6 | BB-06, BB-07, BB-07.1, BB-08, BB-09 |
@@ -293,8 +295,29 @@ Plano técnico detalhado:
   - suite relevante continua verde após o cleanup
 - Gate checks:
   - [ ] nenhum conceito morto permanece descrito como funcional
-  - [ ] nenhum scaffold remanescente fica ambíguo quanto ao seu estado
-  - [ ] o backend continua alinhado ao modelo local-first sem parafernália de compliance não usada
+- [ ] nenhum scaffold remanescente fica ambíguo quanto ao seu estado
+- [ ] o backend continua alinhado ao modelo local-first sem parafernália de compliance não usada
+
+### BB-07.3 — Migrations-first / code-first real
+
+- Fase: 6
+- Estado: OPEN
+- Objetivo: migrar a evolução do schema relacional do backend para uma disciplina migrations-first com EF Core, substituindo o bootstrap SQL manual como fonte dominante de verdade.
+- Escopo:
+  - introduzir migrations versionadas no repositório
+  - gerar baseline coerente com `ArgusDbContext`
+  - definir estratégia segura para bases locais limpas e bases locais já existentes
+  - reduzir ou remover DDL manual em `InfrastructureBootstrapService` quando estiver coberto por migrations
+  - manter bootstrap apenas para pré-condições fora do schema aplicacional
+- Prova obrigatória:
+  - base nova sobe via `MigrateAsync()` sem depender de DDL manual da aplicação
+  - base local já existente consegue continuar a arrancar com estratégia controlada de baseline
+  - suite relevante continua verde
+- Gate checks:
+  - [ ] `ArgusDbContext` passa a ser a fonte de verdade do modelo relacional
+  - [ ] migrations ficam versionadas e reproduzíveis no repositório
+  - [ ] bootstrap SQL manual deixa de ser o caminho principal de evolução de schema
+  - [ ] o runtime local continua simples de usar
 
 ### BB-08 — Leitura HTTP mínima das evidências
 

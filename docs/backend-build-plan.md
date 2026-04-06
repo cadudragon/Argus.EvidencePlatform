@@ -246,6 +246,7 @@ Inclui:
 
 - suporte a múltiplas Firebase apps com roteamento por caso
 - cleanup de conceitos de compliance/scaffold não implementados
+- migração do bootstrap SQL manual para migrations-first com EF Core
 - scripts operacionais estáveis
 - documentação canónica no repo
 - skills locais do Codex
@@ -337,6 +338,52 @@ Resultado esperado:
 - backend mais simples de ler e operar
 - docs alinhados ao comportamento real
 - menos dívida conceitual antes de `BB-08`
+
+## BB novo antes do BB-08: migrations-first / code-first real
+
+Depois do cleanup conceitual e antes do `BB-08`, o backend deve migrar do bootstrap SQL manual embutido na app para uma estratégia migrations-first com EF Core.
+
+Motivação:
+
+- hoje o backend tem `DbContext` e mappings EF, mas a evolução real do schema ainda está acoplada a blocos de SQL manual dentro do runtime
+- isso aumenta custo de manutenção, dificulta revisão de mudanças de schema e fragiliza a evolução incremental
+- novos BBs como leitura HTTP, logging leve por agente/caso e futuras evoluções de storage ficam mais seguros se o schema já estiver numa disciplina migrations-first
+
+Diagnóstico atual:
+
+- o modelo relacional está descrito em `ArgusDbContext`
+- não há migrations ativas no repositório
+- o runtime usa bootstrap com `create table`, `alter table` e `create index` em `InfrastructureBootstrapService`
+- o caminho de `MigrateAsync()` existe, mas hoje não é o caminho dominante
+
+Direção arquitetural vinculativa:
+
+- manter `ArgusDbContext` como fonte de verdade do modelo relacional
+- gerar migrations explícitas e versionadas no repositório
+- usar `MigrateAsync()` como caminho principal de evolução de schema
+- reduzir o bootstrap SQL manual ao mínimo necessário para pré-condições de ambiente, nunca para modelar a aplicação inteira
+- preservar o arranque local simples em `Development`
+
+Escopo recomendado:
+
+- introduzir estrutura oficial de migrations EF Core para a infra
+- gerar migration baseline coerente com o modelo atual
+- definir estratégia de baseline para bases locais já existentes sem quebrar o fluxo do developer
+- remover do runtime o SQL manual de schema que passar a estar coberto por migrations
+- manter bootstrap apenas para criação de containers/blob storage e pré-condições externas ao schema aplicacional
+
+Princípios para a melhor abordagem:
+
+- migrations devem ser o registo versionado do schema
+- SQL manual só permanece quando EF não modelar bem uma necessidade concreta e justificada
+- a experiência local não pode piorar de forma material
+- a transição deve ser incremental e validada com base limpa e base já existente
+
+Resultado esperado:
+
+- schema versionado e auditável no próprio repositório
+- menos lógica de DDL espalhada dentro da app
+- base mais previsível para próximos BBs
 
 ## BB futuro: logging leve por agente/caso
 
