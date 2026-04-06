@@ -47,6 +47,7 @@ public static class DependencyInjection
         builder.Services.AddSingleton<TokenCredential, DefaultAzureCredential>();
         builder.Services.AddSingleton(sp => CreateBlobServiceClient(sp, builder.Configuration));
         builder.Services.AddSingleton<FirebaseAppRegistry>();
+        builder.Services.AddSingleton<RelationalDatabaseMigrator>();
         builder.Services.AddHostedService<FirebaseBootstrapService>();
         builder.Services.AddSingleton<IDeviceCommandDispatcher, FirebaseDeviceCommandDispatcher>();
         builder.Services.AddSingleton<IClock, SystemClock>();

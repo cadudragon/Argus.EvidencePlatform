@@ -28,7 +28,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-07 | DONE | `POST /api/text-captures` | BB-02 |
 | BB-07.1 | DONE | suporte a múltiplas Firebase apps com roteamento por app ativa | BB-03, BB-04 |
 | BB-07.2 | DONE | cleanup de scaffolds e conceitos de compliance não implementados | BB-07.1 |
-| BB-07.3 | OPEN | migração para migrations-first / code-first real no schema relacional | BB-07.2 |
+| BB-07.3 | DONE | migração para migrations-first / code-first real no schema relacional | BB-07.2 |
 | BB-08 | OPEN | leitura HTTP mínima para evidências do caso com streaming HTTP | BB-05, BB-07.3 |
 | BB-08.1 | OPEN | pipeline assíncrono para segmentos de imagem e composição futura de vídeo | BB-08 |
 | BB-09 | OPEN | logging leve de solicitações e acessos por agente/caso | BB-08 |
@@ -329,7 +329,7 @@ Resultado observado:
 ### BB-07.3 — Migrations-first / code-first real
 
 - Fase: 6
-- Estado: OPEN
+- Estado: DONE
 - Objetivo: migrar a evolução do schema relacional do backend para uma disciplina migrations-first com EF Core, substituindo totalmente o bootstrap SQL manual como fonte dominante de verdade e restaurando compatibilidade funcional com a app sem perda de dados.
 - Escopo:
   - introduzir migrations versionadas no repositório
@@ -346,13 +346,13 @@ Resultado observado:
   - fluxo de screenshot com a app volta a fechar end-to-end sem intervenção manual na base
   - suite relevante continua verde
 - Gate checks:
-  - [ ] `ArgusDbContext` passa a ser a fonte de verdade do modelo relacional
-  - [ ] migrations ficam versionadas e reproduzíveis no repositório
-  - [ ] bootstrap SQL manual deixa de ser o caminho principal de evolução de schema
-  - [ ] o runtime local continua simples de usar
-  - [ ] o runtime deixa de depender dos scripts SQL manuais de schema
-  - [ ] a transição preserva os dados já existentes na base local
-  - [ ] a app volta a operar contra a base atual sem falhas causadas por colunas antigas
+  - [x] `ArgusDbContext` passa a ser a fonte de verdade do modelo relacional
+  - [x] migrations ficam versionadas e reproduzíveis no repositório
+  - [x] bootstrap SQL manual deixa de ser o caminho principal de evolução de schema
+  - [x] o runtime local continua simples de usar
+  - [x] o runtime deixa de depender dos scripts SQL manuais de schema
+  - [x] a transição preserva os dados já existentes na base local
+  - [x] a app volta a operar contra a base atual sem falhas causadas por colunas antigas
 
 Débito explícito herdado de `BB-07.2`:
 
@@ -360,6 +360,47 @@ Débito explícito herdado de `BB-07.2`:
 - a base local existente pode continuar a exigir parte dessas colunas antigas
 - hoje já existe prova real de drift: `POST /api/screenshots` pode falhar com `23502 null value in column "ImmutabilityState"` em bases antigas
 - este débito não será tratado em hotfix avulso; fica incorporado no `BB-07.3`
+
+Entregas implementadas:
+
+- mapeamentos EF extraídos para `Persistence/Configurations/*`
+- design-time factory adicionada para `dotnet-ef`
+- `dotnet-ef` versionado no repo via `.config/dotnet-tools.json`
+- migrations adicionadas:
+  - `20260406212005_InitialBaseline`
+  - `20260406212021_ReconcileLegacySchema`
+- bootstrap relacional movido para adoção controlada + `MigrateAsync()`
+- `EnsureCreated` removido do bootstrap de persistência Firebase
+
+Estratégia operacional final:
+
+- base limpa:
+  - aplicar migrations normalmente
+- base local existente sem `__EFMigrationsHistory`:
+  - o runtime valida a presença do conjunto atual de tabelas `argus`
+  - insere o baseline na history table
+  - aplica apenas as migrations pendentes, incluindo `ReconcileLegacySchema`
+- schema aplicacional:
+  - não usar mais SQL manual de criação/alteração no runtime
+
+Prova executável registada:
+
+- `C:\Progra~1\dotnet\dotnet.exe tool restore`
+- `C:\Progra~1\dotnet\dotnet.exe build Argus.EvidencePlatform.slnx`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.IntegrationTests\Argus.EvidencePlatform.IntegrationTests.csproj --filter "FullyQualifiedName~PostgresMigrationsTests"`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.IntegrationTests\Argus.EvidencePlatform.IntegrationTests.csproj --filter "FullyQualifiedName~PostgresScreenshotsEndpointsTests"`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.UnitTests\Argus.EvidencePlatform.UnitTests.csproj`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.IntegrationTests\Argus.EvidencePlatform.IntegrationTests.csproj`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.ArchTests\Argus.EvidencePlatform.ArchTests.csproj`
+- `C:\Progra~1\dotnet\dotnet.exe test Argus.EvidencePlatform.slnx`
+
+Resultado observado:
+
+- base limpa em PostgreSQL aplica `InitialBaseline` e `ReconcileLegacySchema`
+- base legada sem history table é adotada automaticamente e reconciliada sem perder os registos inseridos no teste
+- colunas mortas de `BB-07.2` deixam de existir após a reconciliação
+- `/api/screenshots` volta a funcionar sobre PostgreSQL real após migrations
+- suite unitária, integração, arquitetura e solution completa verdes
 
 ### BB-08 — Leitura HTTP mínima das evidências
 

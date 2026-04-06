@@ -28,7 +28,6 @@ public sealed class FirebaseConfigurationBootstrapService(
         await using var scope = serviceProvider.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ArgusDbContext>();
         var now = DateTimeOffset.UtcNow;
-        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
         var existingRegistrations = await dbContext.FirebaseAppRegistrations
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 

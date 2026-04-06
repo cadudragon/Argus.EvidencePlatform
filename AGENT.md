@@ -140,7 +140,11 @@ Current architecture:
 
 - multi-Firebase support by case is implemented before `BB-08`
 - `BB-07.2` cleaned dead compliance/scaffold concepts before `BB-08`
-- the next structural backend block is `BB-07.3`, to move schema evolution to EF Core migrations-first, remove schema bootstrap SQL from the runtime, reconcile the current local database without data loss, and restore full app compatibility after the `BB-07.2` cleanup
+- `BB-07.3` moved relational schema evolution to EF Core migrations-first
+- application schema DDL no longer lives in runtime bootstrap SQL
+- existing local databases are adopted automatically into `__EFMigrationsHistory` before pending migrations are applied
+- legacy drift from pre-`BB-07.2` columns such as `ImmutabilityState`, `LegalHoldState`, `ManifestBlobName`, and `PackageBlobName` is reconciled by the EF migration `ReconcileLegacySchema`
+- the next structural backend block is `BB-08`
 - case creation assigns exactly one active Firebase app for new cases
 - device activation materializes the case assignment, not choose the Firebase app
 - `PUT /api/fcm-token` and `POST /api/device-commands/screenshot` resolve routing from the case/device context
@@ -164,7 +168,8 @@ The export helper downloads screenshots for a case into a local folder:
 
 - The screenshot ingestion contract uses `captureTimestamp` as Unix epoch milliseconds from Android. Backend code already normalizes this.
 - Local Firebase testing depends on a valid `fcmToken` being persisted for the active `deviceId`.
-- After `BB-07.2`, some existing local databases may still contain old schema constraints from the pre-cleanup model. Treat schema reconciliation as part of `BB-07.3`, not as oral context.
+- Existing local databases from before `BB-07.3` may still start without `__EFMigrationsHistory`; runtime adoption into migrations history is now part of startup behavior.
+- Do not reintroduce `EnsureCreated`, `CreateTables`, or runtime DDL for application schema. Schema evolution belongs in EF Core migrations under `src/Argus.EvidencePlatform.Infrastructure/Persistence/Migrations`.
 
 ## What Belongs Here vs Skills
 

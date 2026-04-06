@@ -405,6 +405,18 @@ Resultado esperado:
 - base local existente preservada e reconciliada com o modelo atual
 - app volta a conseguir completar uploads de screenshot sem falha por drift de schema
 
+Estado após `BB-07.3`:
+
+- migrations EF Core passaram a viver em `src/Argus.EvidencePlatform.Infrastructure/Persistence/Migrations`
+- `ArgusDbContext` continua a ser a fonte de verdade, com mappings extraídos para `Persistence/Configurations`
+- o runtime deixou de usar `CreateTablesAsync`, `EnsureCreated` e SQL manual para schema aplicacional
+- a base local existente é adotada automaticamente para `__EFMigrationsHistory` quando já contém o conjunto atual de tabelas `argus`
+- a migration `ReconcileLegacySchema` remove drift legado de `ImmutabilityState`, `LegalHoldState`, `ManifestBlobName` e `PackageBlobName`, e alinha `FirebaseAppId` com o modelo atual
+- PostgreSQL real valida:
+  - base limpa via migrations
+  - base legada sem history table adotada e reconciliada sem perder os registos inseridos no teste
+  - fluxo `/api/screenshots` funcional sobre PostgreSQL após migrations
+
 ## BB futuro: logging leve por agente/caso
 
 Depois do cleanup e antes do endurecimento final de regressão, o backend deve ganhar um mecanismo leve para registar o que foi solicitado e acedido por agente dentro de um caso.
