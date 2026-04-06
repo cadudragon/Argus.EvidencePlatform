@@ -160,9 +160,6 @@ public sealed class InfrastructureBootstrapService(
                 "UpdatedAt" timestamp with time zone not null
             );
 
-            create unique index if not exists "IX_firebase_app_registrations_Key"
-                on argus.firebase_app_registrations ("Key");
-
             create table if not exists argus.activation_tokens
             (
                 "Id" uuid primary key,
@@ -175,15 +172,6 @@ public sealed class InfrastructureBootstrapService(
                 "ConsumedByDeviceId" character varying(128) null
             );
 
-            create unique index if not exists "IX_activation_tokens_Token"
-                on argus.activation_tokens ("Token");
-
-            alter table argus.cases
-                add column if not exists "FirebaseAppId" uuid null;
-
-            create index if not exists "IX_cases_FirebaseAppId"
-                on argus.cases ("FirebaseAppId");
-
             create table if not exists argus.device_sources
             (
                 "Id" uuid primary key,
@@ -195,9 +183,6 @@ public sealed class InfrastructureBootstrapService(
                 "LastSeenAt" timestamp with time zone null
             );
 
-            create unique index if not exists "IX_device_sources_DeviceId"
-                on argus.device_sources ("DeviceId");
-
             create table if not exists argus.fcm_token_bindings
             (
                 "Id" uuid primary key,
@@ -207,12 +192,6 @@ public sealed class InfrastructureBootstrapService(
                 "BoundAt" timestamp with time zone not null,
                 "UpdatedAt" timestamp with time zone not null
             );
-
-            create unique index if not exists "IX_fcm_token_bindings_DeviceId"
-                on argus.fcm_token_bindings ("DeviceId");
-
-            create index if not exists "IX_fcm_token_bindings_FirebaseAppId"
-                on argus.fcm_token_bindings ("FirebaseAppId");
 
             create table if not exists argus.notification_captures
             (
@@ -231,9 +210,6 @@ public sealed class InfrastructureBootstrapService(
                 "ReceivedAt" timestamp with time zone not null
             );
 
-            create index if not exists "IX_notification_captures_CaseId_CaptureTimestamp"
-                on argus.notification_captures ("CaseId", "CaptureTimestamp");
-
             create table if not exists argus.text_capture_batches
             (
                 "Id" uuid primary key,
@@ -247,6 +223,41 @@ public sealed class InfrastructureBootstrapService(
                 "PackageNamesJson" jsonb not null,
                 "ReceivedAt" timestamp with time zone not null
             );
+            """,
+            cancellationToken);
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            alter table argus.cases
+                add column if not exists "FirebaseAppId" uuid null;
+
+            alter table argus.fcm_token_bindings
+                add column if not exists "FirebaseAppId" uuid null;
+            """,
+            cancellationToken);
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            create unique index if not exists "IX_firebase_app_registrations_Key"
+                on argus.firebase_app_registrations ("Key");
+
+            create unique index if not exists "IX_activation_tokens_Token"
+                on argus.activation_tokens ("Token");
+
+            create index if not exists "IX_cases_FirebaseAppId"
+                on argus.cases ("FirebaseAppId");
+
+            create unique index if not exists "IX_device_sources_DeviceId"
+                on argus.device_sources ("DeviceId");
+
+            create unique index if not exists "IX_fcm_token_bindings_DeviceId"
+                on argus.fcm_token_bindings ("DeviceId");
+
+            create index if not exists "IX_fcm_token_bindings_FirebaseAppId"
+                on argus.fcm_token_bindings ("FirebaseAppId");
+
+            create index if not exists "IX_notification_captures_CaseId_CaptureTimestamp"
+                on argus.notification_captures ("CaseId", "CaptureTimestamp");
 
             create index if not exists "IX_text_capture_batches_CaseId_CaptureTimestamp"
                 on argus.text_capture_batches ("CaseId", "CaptureTimestamp");

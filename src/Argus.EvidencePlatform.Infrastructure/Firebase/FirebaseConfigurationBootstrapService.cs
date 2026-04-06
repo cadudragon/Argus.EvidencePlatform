@@ -64,32 +64,46 @@ public sealed class FirebaseConfigurationBootstrapService(
         if (configuredApps.Count == 1)
         {
             var firebaseAppId = FirebaseAppRegistration.CreateDeterministicId(configuredApps[0].Key);
-            var legacyCases = await dbContext.Cases
-                .Where(x => x.FirebaseAppId == Guid.Empty)
-                .ToListAsync(cancellationToken);
-            foreach (var legacyCase in legacyCases)
-            {
-                dbContext.Entry(legacyCase).Property(nameof(legacyCase.FirebaseAppId)).CurrentValue = firebaseAppId;
-            }
+            var migratedCases = await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                  update argus.cases
+                  set "FirebaseAppId" = {firebaseAppId}
+                  where "FirebaseAppId" is null
+                     or "FirebaseAppId" = {Guid.Empty};
+                  """,
+                cancellationToken);
 
-            var legacyBindings = await dbContext.FcmTokenBindings
-                .Where(x => x.FirebaseAppId == Guid.Empty)
-                .ToListAsync(cancellationToken);
-            foreach (var legacyBinding in legacyBindings)
-            {
-                dbContext.Entry(legacyBinding).Property(nameof(legacyBinding.FirebaseAppId)).CurrentValue = firebaseAppId;
-            }
+            var migratedBindings = await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                  update argus.fcm_token_bindings
+                  set "FirebaseAppId" = {firebaseAppId}
+                  where "FirebaseAppId" is null
+                     or "FirebaseAppId" = {Guid.Empty};
+                  """,
+                cancellationToken);
 
-            if (legacyCases.Count > 0 || legacyBindings.Count > 0)
+            if (migratedCases > 0 || migratedBindings > 0)
             {
-                await dbContext.SaveChangesAsync(cancellationToken);
+                logger.LogInformation(
+                    "Migrated {CaseCount} legacy cases and {BindingCount} FCM bindings to Firebase app {FirebaseAppId}.",
+                    migratedCases,
+                    migratedBindings,
+                    firebaseAppId);
             }
 
             return;
         }
 
-        var hasLegacyCases = await dbContext.Cases.AnyAsync(x => x.FirebaseAppId == Guid.Empty, cancellationToken);
-        var hasLegacyBindings = await dbContext.FcmTokenBindings.AnyAsync(x => x.FirebaseAppId == Guid.Empty, cancellationToken);
+        var hasLegacyCases = await dbContext.Cases
+            .AsNoTracking()
+            .Where(x => x.Id != Guid.Empty)
+            .Select(x => EF.Property<Guid?>(x, nameof(Domain.Cases.Case.FirebaseAppId)))
+            .AnyAsync(x => x == null || x == Guid.Empty, cancellationToken);
+        var hasLegacyBindings = await dbContext.FcmTokenBindings
+            .AsNoTracking()
+            .Where(x => x.Id != Guid.Empty)
+            .Select(x => EF.Property<Guid?>(x, nameof(Domain.Devices.FcmTokenBinding.FirebaseAppId)))
+            .AnyAsync(x => x == null || x == Guid.Empty, cancellationToken);
         if (hasLegacyCases || hasLegacyBindings)
         {
             throw new InvalidOperationException(

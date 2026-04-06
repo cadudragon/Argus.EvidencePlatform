@@ -1,4 +1,5 @@
 using Argus.EvidencePlatform.Application.Common.Abstractions;
+using Argus.EvidencePlatform.Domain.Cases;
 using Argus.EvidencePlatform.Domain.Firebase;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -11,28 +12,24 @@ public sealed class FirebaseAppRoutingResolver(
 {
     public async Task<FirebaseAppRoutingContext?> ResolveForCaseAsync(Guid caseId, CancellationToken cancellationToken)
     {
-        var persisted = await dbContext.Cases
+        var firebaseAppId = await dbContext.Cases
             .AsNoTracking()
-            .Where(x => x.Id == caseId && x.FirebaseAppId != Guid.Empty)
-            .Join(
-                dbContext.FirebaseAppRegistrations.AsNoTracking(),
-                c => c.FirebaseAppId,
-                f => f.Id,
-                (c, f) => new FirebaseAppRoutingContext(f.Id, f.Key, f.ProjectId))
+            .Where(x => x.Id == caseId)
+            .Select(x => EF.Property<Guid?>(x, nameof(Case.FirebaseAppId)))
+            .SingleOrDefaultAsync(cancellationToken);
+        if (firebaseAppId is null || firebaseAppId == Guid.Empty)
+        {
+            return null;
+        }
+
+        var persisted = await dbContext.FirebaseAppRegistrations
+            .AsNoTracking()
+            .Where(x => x.Id == firebaseAppId.Value)
+            .Select(x => new FirebaseAppRoutingContext(x.Id, x.Key, x.ProjectId))
             .SingleOrDefaultAsync(cancellationToken);
         if (persisted is not null)
         {
             return persisted;
-        }
-
-        var firebaseAppId = await dbContext.Cases
-            .AsNoTracking()
-            .Where(x => x.Id == caseId)
-            .Select(x => x.FirebaseAppId)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (firebaseAppId == Guid.Empty)
-        {
-            return null;
         }
 
         var configured = options.Value.Apps
@@ -42,7 +39,7 @@ public sealed class FirebaseAppRoutingResolver(
                 FirebaseAppRegistration.CreateDeterministicId(app.Key),
                 app.Key.Trim(),
                 app.ProjectId.Trim()))
-            .SingleOrDefault(app => app.FirebaseAppId == firebaseAppId);
+            .SingleOrDefault(app => app.FirebaseAppId == firebaseAppId.Value);
 
         return configured;
     }
