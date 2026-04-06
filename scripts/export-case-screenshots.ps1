@@ -65,7 +65,7 @@ $programPath = Join-Path $projectDir "Program.cs"
 $inputPath = Join-Path $tempRoot "downloads.json"
 
 New-Item -ItemType Directory -Path $projectDir -Force | Out-Null
-$downloads | ConvertTo-Json -Depth 4 | Set-Content -Path $inputPath
+@($downloads) | ConvertTo-Json -Depth 4 | Set-Content -Path $inputPath
 
 $projectXml = @"
 <Project Sdk="Microsoft.NET.Sdk">

@@ -55,8 +55,15 @@ Minimum config:
 ```json
 {
   "Firebase": {
-    "ProjectId": "your-project-id",
-    "CredentialsPath": "C:\\secrets\\firebase-admin.json"
+    "Apps": [
+      {
+        "Key": "fb-app-01",
+        "DisplayName": "Primary Firebase App",
+        "ProjectId": "your-project-id",
+        "ServiceAccountPath": "C:\\secrets\\firebase-admin.json",
+        "IsActiveForNewCases": true
+      }
+    ]
   }
 }
 ```
@@ -328,6 +335,45 @@ Best practices:
 - validate required fields
 - sanitize and cap oversized text
 - store the original timestamps sent by the device
+
+## Evidence Read and Transfer
+
+### Downloads and HTTP reads
+
+For binary evidence reads:
+
+- prefer `Stream`-based responses over materializing full blobs into memory
+- support HTTP `Range` for larger binary downloads when partial reads or resume matter
+- paginate evidence listings from the first version of the endpoint
+- keep read endpoints read-only and operational; do not couple them to heavy processing
+- return metadata separately from the binary payload when that keeps the contract simpler
+
+### Upload and download performance
+
+Best practices:
+
+- do not assume that single-file media today means single-file media forever
+- use explicit request size limits per endpoint
+- avoid buffering entire uploads or downloads in memory unless the payload is known to be small
+- keep blob transfer logic in Infrastructure and technical rules in Application
+- tune blob transfer settings only after measuring a real bottleneck
+
+### Streaming evolution for long-running captures
+
+If the platform evolves to receive short image segments that later become a video or larger derived artifact:
+
+- accept and persist segments quickly
+- enqueue composition or aggregation work for a background worker
+- use bounded queues or equivalent backpressure
+- do not compose video inline inside the request path
+- persist the derived final artifact separately from the original segments
+
+### What not to do
+
+- do not return large blobs as `byte[]` from application handlers
+- do not mount video assembly or transcoding into Minimal API delegates
+- do not let a single read endpoint fetch, aggregate, transform and return media in one step
+- do not write concurrently to the same blob path without an explicit coordination model
 
 ## Pong Handling
 

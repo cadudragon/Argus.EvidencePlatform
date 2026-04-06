@@ -32,11 +32,14 @@ Example local overrides:
 
 ```powershell
 $env:Firebase__Enabled = "true"
-$env:Firebase__ProjectId = "your-firebase-project-id"
-$env:Firebase__ServiceAccountPath = "C:\\secrets\\firebase-service-account.json"
+$env:Firebase__Apps__0__Key = "fb-local-primary"
+$env:Firebase__Apps__0__DisplayName = "Local Primary"
+$env:Firebase__Apps__0__ProjectId = "your-firebase-project-id"
+$env:Firebase__Apps__0__ServiceAccountPath = "C:\\secrets\\firebase-service-account.json"
+$env:Firebase__Apps__0__IsActiveForNewCases = "true"
 ```
 
-Relative `Firebase__ServiceAccountPath` values are resolved from the application content root.
+Relative `Firebase__Apps__{n}__ServiceAccountPath` values are resolved from the application content root.
 
 ## Manual local E2E
 

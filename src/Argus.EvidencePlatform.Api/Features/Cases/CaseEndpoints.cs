@@ -42,6 +42,14 @@ public static class CaseEndpoints
             });
         }
 
+        if (result.Outcome == CreateCaseOutcome.FirebaseUnavailable)
+        {
+            return Results.Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "No eligible Firebase app is available for new cases.",
+                detail: "The backend configuration does not currently allow assigning a Firebase app to a new case.");
+        }
+
         return Results.Created($"/api/cases/{result.Case!.Id}", result.Case);
     }
 

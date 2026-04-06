@@ -14,6 +14,7 @@ public sealed class FcmTokenBindingRepository(ArgusDbContext dbContext) : IFcmTo
     public Task<FcmTokenBinding?> GetByDeviceIdAsync(string deviceId, CancellationToken cancellationToken)
     {
         return dbContext.FcmTokenBindings
+            .AsTracking()
             .SingleOrDefaultAsync(x => x.DeviceId == deviceId, cancellationToken);
     }
 

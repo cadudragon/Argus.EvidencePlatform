@@ -2,7 +2,9 @@ using Argus.EvidencePlatform.Domain.Audit;
 using Argus.EvidencePlatform.Domain.Cases;
 using Argus.EvidencePlatform.Domain.Devices;
 using Argus.EvidencePlatform.Domain.Evidence;
+using Argus.EvidencePlatform.Domain.Firebase;
 using Argus.EvidencePlatform.Domain.Notifications;
+using Argus.EvidencePlatform.Domain.TextCaptures;
 using Argus.EvidencePlatform.Domain.Enrollment;
 using Argus.EvidencePlatform.Domain.Exports;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +17,9 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : D
     public DbSet<ActivationToken> ActivationTokens => Set<ActivationToken>();
     public DbSet<DeviceSource> DeviceSources => Set<DeviceSource>();
     public DbSet<FcmTokenBinding> FcmTokenBindings => Set<FcmTokenBinding>();
+    public DbSet<FirebaseAppRegistration> FirebaseAppRegistrations => Set<FirebaseAppRegistration>();
     public DbSet<NotificationCapture> NotificationCaptures => Set<NotificationCapture>();
+    public DbSet<TextCaptureBatch> TextCaptureBatches => Set<TextCaptureBatch>();
     public DbSet<EvidenceItem> EvidenceItems => Set<EvidenceItem>();
     public DbSet<EvidenceBlob> EvidenceBlobs => Set<EvidenceBlob>();
     public DbSet<ExportJob> ExportJobs => Set<ExportJob>();
@@ -30,10 +34,22 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : D
             entity.ToTable("cases");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.ExternalCaseId).IsUnique();
+            entity.HasIndex(x => x.FirebaseAppId);
             entity.Property(x => x.ExternalCaseId).HasMaxLength(128);
             entity.Property(x => x.Title).HasMaxLength(256);
             entity.Property(x => x.Description).HasMaxLength(2048);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        });
+
+        modelBuilder.Entity<FirebaseAppRegistration>(entity =>
+        {
+            entity.ToTable("firebase_app_registrations");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.Key).IsUnique();
+            entity.Property(x => x.Key).HasMaxLength(128);
+            entity.Property(x => x.DisplayName).HasMaxLength(256);
+            entity.Property(x => x.ProjectId).HasMaxLength(256);
+            entity.Property(x => x.ServiceAccountPath).HasMaxLength(2048);
         });
 
         modelBuilder.Entity<ActivationToken>(entity =>
@@ -60,6 +76,7 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : D
             entity.ToTable("fcm_token_bindings");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.DeviceId).IsUnique();
+            entity.HasIndex(x => x.FirebaseAppId);
             entity.Property(x => x.DeviceId).HasMaxLength(128);
             entity.Property(x => x.FcmToken).HasMaxLength(4096);
         });
@@ -77,6 +94,18 @@ public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : D
             entity.Property(x => x.Text).HasMaxLength(4096);
             entity.Property(x => x.BigText).HasMaxLength(16384);
             entity.Property(x => x.Category).HasMaxLength(128);
+        });
+
+        modelBuilder.Entity<TextCaptureBatch>(entity =>
+        {
+            entity.ToTable("text_capture_batches");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.CaseId, x.CaptureTimestamp });
+            entity.Property(x => x.CaseExternalId).HasMaxLength(128);
+            entity.Property(x => x.DeviceId).HasMaxLength(128);
+            entity.Property(x => x.Sha256).HasMaxLength(128);
+            entity.Property(x => x.PayloadJson).HasColumnType("jsonb");
+            entity.Property(x => x.PackageNamesJson).HasColumnType("jsonb");
         });
 
         modelBuilder.Entity<EvidenceItem>(entity =>

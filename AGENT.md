@@ -10,6 +10,7 @@ Canonical planning references:
 
 - [docs/backend-build-plan.md](C:\Src\Argus.EvidencePlatform\docs\backend-build-plan.md)
 - [docs/backend-build-runbook.md](C:\Src\Argus.EvidencePlatform\docs\backend-build-runbook.md)
+- [docs/backend-bb-07.1-multi-firebase-plan.md](C:\Src\Argus.EvidencePlatform\docs\backend-bb-07.1-multi-firebase-plan.md)
 
 ## Architecture
 
@@ -61,7 +62,7 @@ This state is transient. Update it when local testing rotates to a new case or d
 - Last known local Wi-Fi API base URL: `http://192.168.1.68:5058`
 - Current validated Android package id: `com.argus.android`
 - Last working local device id: `android-d4e40efbdeb91b34`
-- Last working local case external id for screenshot tests: `CASE-ACT-20260402-172929`
+- Last working local case external id for screenshot tests: `CASE-ACT-20260403-194200`
 
 Treat these values as operational hints, not stable domain constants.
 
@@ -97,6 +98,13 @@ Implementation detail:
 - No gzip
 - Persists notification metadata in PostgreSQL after validating `deviceId + caseId`
 
+### Text Capture Ingestion
+
+- `POST /api/text-captures`
+- Plain JSON only
+- No gzip
+- Persists text-capture batches in PostgreSQL after validating `deviceId + caseId`
+
 ### On-Demand Screenshot Command
 
 - `POST /api/device-commands/screenshot`
@@ -113,14 +121,28 @@ The operational helpers are:
 
 The backend code currently reads:
 - `Firebase:Enabled`
-- `Firebase:ProjectId`
-- `Firebase:ServiceAccountPath`
+- `Firebase:Apps:{n}:Key`
+- `Firebase:Apps:{n}:DisplayName`
+- `Firebase:Apps:{n}:ProjectId`
+- `Firebase:Apps:{n}:ServiceAccountPath`
+- `Firebase:Apps:{n}:IsActiveForNewCases`
 
 For local development, store these with `dotnet user-secrets` on the API project. Do not commit service-account JSON files.
 
 Important:
-- `Firebase:ProjectId` must be the Firebase project id, not the Android package name
-- `Firebase:ServiceAccountPath` must point to a real JSON file on disk
+- `POST /api/cases` now returns `503` when the backend cannot resolve exactly one eligible Firebase app for new cases
+- `Firebase:Apps:{n}:ProjectId` must be the Firebase project id, not the Android package name
+- `Firebase:Apps:{n}:ServiceAccountPath` must point to a real JSON file on disk
+- `Case.FirebaseAppId` is now the source of truth for command routing
+- `FcmTokenBinding.FirebaseAppId` is persisted as routing/audit context for the current token
+
+Current architecture:
+
+- multi-Firebase support by case is implemented before `BB-08`
+- case creation assigns exactly one active Firebase app for new cases
+- device activation materializes the case assignment, not choose the Firebase app
+- `PUT /api/fcm-token` and `POST /api/device-commands/screenshot` resolve routing from the case/device context
+- detailed implementation planning and closure criteria live in [docs/backend-bb-07.1-multi-firebase-plan.md](C:\Src\Argus.EvidencePlatform\docs\backend-bb-07.1-multi-firebase-plan.md)
 
 ## Storage
 
@@ -129,6 +151,7 @@ Local binary evidence goes to Azurite via `UseDevelopmentStorage=true`.
 For screenshots:
 - metadata is stored in PostgreSQL
 - binary content is stored in Azurite blobs
+- recent local screenshot tests have stored blobs in container `staging`; do not assume `evidence` without checking metadata
 
 The export helper downloads screenshots for a case into a local folder:
 - [export-case-screenshots.ps1](C:\Src\Argus.EvidencePlatform\scripts\export-case-screenshots.ps1)

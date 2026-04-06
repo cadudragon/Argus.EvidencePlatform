@@ -5,23 +5,27 @@ using Microsoft.Extensions.Logging;
 namespace Argus.EvidencePlatform.Infrastructure.Firebase;
 
 public sealed class FirebaseDeviceCommandDispatcher(
-    FirebaseAppAccessor firebaseAppAccessor,
+    FirebaseAppRegistry firebaseAppRegistry,
     ILogger<FirebaseDeviceCommandDispatcher> logger) : IDeviceCommandDispatcher
 {
     public async Task<DeviceCommandDispatchResult> RequestScreenshotAsync(
+        Guid firebaseAppId,
         string deviceId,
         string fcmToken,
         CancellationToken cancellationToken)
     {
-        if (!firebaseAppAccessor.IsConfigured || firebaseAppAccessor.App is null)
+        if (!firebaseAppRegistry.TryGet(firebaseAppId, out var firebaseApp) || firebaseApp is null)
         {
-            logger.LogError("Firebase command dispatch requested for device {DeviceId}, but Firebase is not configured.", deviceId);
+            logger.LogError(
+                "Firebase command dispatch requested for device {DeviceId}, but Firebase app {FirebaseAppId} is not configured.",
+                deviceId,
+                firebaseAppId);
             return new DeviceCommandDispatchResult(DeviceCommandDispatchStatus.Failed, null, "firebase_not_configured");
         }
 
         try
         {
-            var messageId = await FirebaseMessaging.GetMessaging(firebaseAppAccessor.App).SendAsync(
+            var messageId = await FirebaseMessaging.GetMessaging(firebaseApp).SendAsync(
                 new Message
                 {
                     Token = fcmToken,

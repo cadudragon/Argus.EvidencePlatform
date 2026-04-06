@@ -11,7 +11,7 @@ Hoje ele já funciona como:
 - timeline de artefactos por caso;
 - criação e consulta de jobs de export;
 - trilha de auditoria por caso;
-- pontos adicionais de `activate`, `pong`, `fcm-token` e `notifications` que já existem no código atual.
+- pontos adicionais de `activate`, `pong`, `fcm-token`, `notifications` e `text-captures` que já existem no código atual.
 
 Ele **não é** hoje um sistema cloud endurecido nem um produto final de compliance.  
 O projeto está em `functional mode`, com foco em validação local e evolução incremental.
@@ -205,6 +205,22 @@ Endpoint:
 
 - `POST /api/notifications`
 
+### 8. Text Captures
+
+Responsabilidade:
+
+- receber batches de texto extraído da accessibility tree;
+- validar `deviceId + caseId`;
+- persistir o batch relacionalmente com auditoria.
+
+Slice:
+
+- `TextCaptures/IngestTextCapture`
+
+Endpoint:
+
+- `POST /api/text-captures`
+
 ## Inventário completo das slices no código
 
 ### Slices HTTP públicas
@@ -220,6 +236,7 @@ Endpoint:
 - `Device/RecordPong`
 - `Device/BindFcmToken`
 - `Notifications/IngestNotification`
+- `TextCaptures/IngestTextCapture`
 
 ### Slice interna sem endpoint público
 
@@ -247,6 +264,7 @@ Responses:
 
 - `201 Created`
 - `409 Conflict` se `externalCaseId` já existir
+- `503 Service Unavailable` se o backend não conseguir resolver exatamente uma Firebase app elegível para novos casos
 
 ### `GET /api/cases/{id}`
 
@@ -454,6 +472,37 @@ Responses:
 - `409 Conflict`
 - `410 Gone`
 
+### `POST /api/text-captures`
+
+Ingere um batch de texto extraído.
+
+Request:
+
+```json
+{
+  "deviceId": "android-0123456789abcdef",
+  "caseId": "CASE-001",
+  "sha256": "3f786850e387550fdab836ed7e6dc881de23001b",
+  "captureTimestamp": 1767225600000,
+  "captures": [
+    {
+      "packageName": "com.whatsapp",
+      "className": "android.widget.TextView",
+      "text": "Message content",
+      "contentDescription": null
+    }
+  ]
+}
+```
+
+Responses:
+
+- `200 OK`
+- `400 Bad Request`
+- `404 Not Found`
+- `409 Conflict`
+- `410 Gone`
+
 ## Fluxo funcional principal
 
 ### Fluxo 1: caso + artefacto + timeline
@@ -574,6 +623,7 @@ Invoke-RestMethod `
 - `Device/RecordPong`
 - `Device/BindFcmToken`
 - `Notifications/IngestNotification`
+- `TextCaptures/IngestTextCapture`
 - `ActivationTokens/IssueActivationToken` interno
 
 No diretório `tests/`, a cobertura dedicada identificada com clareza hoje está concentrada nas slices do núcleo `Cases/Evidence/Exports/Audit`.
@@ -608,7 +658,7 @@ Se quiseres usar o backend hoje sem olhar para o código:
 4. envia ficheiros em `POST /api/evidence/artifacts`
 5. consulta timeline, export e audit
 
-Os endpoints `activate`, `pong`, `fcm-token` e `notifications` também já existem no código atual, mas a espinha dorsal validada do sistema continua a ser:
+Os endpoints `activate`, `pong`, `fcm-token`, `notifications` e `text-captures` também já existem no código atual, mas a espinha dorsal validada do sistema continua a ser:
 
 - `Cases`
 - `Evidence`

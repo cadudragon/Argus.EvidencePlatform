@@ -18,7 +18,12 @@ public sealed class CreateCaseHandlerTests
         var auditRepository = new FakeAuditRepository();
         var unitOfWork = new FakeUnitOfWork();
         var clock = new FakeClock(new DateTimeOffset(2026, 4, 1, 12, 0, 0, TimeSpan.Zero));
-        var handler = new CreateCaseHandler(caseRepository, auditRepository, clock, unitOfWork);
+        var handler = new CreateCaseHandler(
+            caseRepository,
+            new FakeFirebaseAppAssignmentPolicy(Guid.Parse("11111111-1111-1111-1111-111111111111")),
+            auditRepository,
+            clock,
+            unitOfWork);
 
         var result = await handler.Handle(
             new CreateCaseCommand("  CASE-2026-001  ", "  Investigation  ", "   High priority   "),
@@ -62,6 +67,7 @@ public sealed class CreateCaseHandlerTests
         var unitOfWork = new FakeUnitOfWork();
         var handler = new CreateCaseHandler(
             caseRepository,
+            new FakeFirebaseAppAssignmentPolicy(Guid.Parse("11111111-1111-1111-1111-111111111111")),
             auditRepository,
             new FakeClock(new DateTimeOffset(2026, 4, 1, 12, 0, 0, TimeSpan.Zero)),
             unitOfWork);
@@ -86,6 +92,7 @@ public sealed class CreateCaseHandlerTests
         var unitOfWork = new FakeUnitOfWork();
         var handler = new CreateCaseHandler(
             caseRepository,
+            new FakeFirebaseAppAssignmentPolicy(Guid.Parse("11111111-1111-1111-1111-111111111111")),
             auditRepository,
             new FakeClock(new DateTimeOffset(2026, 4, 1, 12, 0, 0, TimeSpan.Zero)),
             unitOfWork);
@@ -112,6 +119,7 @@ public sealed class CreateCaseHandlerTests
         var unitOfWork = new FakeUnitOfWork();
         var handler = new CreateCaseHandler(
             caseRepository,
+            new FakeFirebaseAppAssignmentPolicy(Guid.Parse("11111111-1111-1111-1111-111111111111")),
             auditRepository,
             new FakeClock(new DateTimeOffset(2026, 4, 1, 12, 0, 0, TimeSpan.Zero)),
             unitOfWork);
@@ -125,6 +133,30 @@ public sealed class CreateCaseHandlerTests
             .WithParameterName("externalCaseId");
 
         caseRepository.LastExternalCaseIdLookup.Should().BeNull();
+        caseRepository.AddedCases.Should().BeEmpty();
+        auditRepository.AddedEntries.Should().BeEmpty();
+        unitOfWork.SaveChangesCalls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_should_return_firebase_unavailable_when_no_eligible_app_exists()
+    {
+        var caseRepository = new FakeCaseRepository();
+        var auditRepository = new FakeAuditRepository();
+        var unitOfWork = new FakeUnitOfWork();
+        var handler = new CreateCaseHandler(
+            caseRepository,
+            new FakeFirebaseAppAssignmentPolicy(null),
+            auditRepository,
+            new FakeClock(new DateTimeOffset(2026, 4, 1, 12, 0, 0, TimeSpan.Zero)),
+            unitOfWork);
+
+        var result = await handler.Handle(
+            new CreateCaseCommand("CASE-2026-001", "Investigation", null),
+            CancellationToken.None);
+
+        result.Outcome.Should().Be(CreateCaseOutcome.FirebaseUnavailable);
+        result.Case.Should().BeNull();
         caseRepository.AddedCases.Should().BeEmpty();
         auditRepository.AddedEntries.Should().BeEmpty();
         unitOfWork.SaveChangesCalls.Should().Be(0);
@@ -188,6 +220,16 @@ public sealed class CreateCaseHandlerTests
     private sealed class FakeClock(DateTimeOffset utcNow) : IClock
     {
         public DateTimeOffset UtcNow { get; } = utcNow;
+    }
+
+    private sealed class FakeFirebaseAppAssignmentPolicy(Guid? firebaseAppId) : IFirebaseAppAssignmentPolicy
+    {
+        public Task<FirebaseAppAssignmentResult> AssignForNewCaseAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(firebaseAppId.HasValue
+                ? FirebaseAppAssignmentResult.Assigned(firebaseAppId.Value)
+                : FirebaseAppAssignmentResult.NoneEligible());
+        }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

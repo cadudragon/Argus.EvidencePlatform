@@ -8,6 +8,7 @@ namespace Argus.EvidencePlatform.Application.Device.RequestScreenshot;
 
 public sealed class RequestScreenshotHandler(
     IDeviceSourceRepository deviceSourceRepository,
+    IFirebaseAppRoutingResolver firebaseAppRoutingResolver,
     IFcmTokenBindingRepository fcmTokenBindingRepository,
     IDeviceCommandDispatcher deviceCommandDispatcher,
     IAuditRepository auditRepository,
@@ -33,6 +34,12 @@ public sealed class RequestScreenshotHandler(
             return RequestScreenshotResult.Gone();
         }
 
+        var firebaseApp = await firebaseAppRoutingResolver.ResolveForCaseAsync(deviceSource.CaseId, cancellationToken);
+        if (firebaseApp is null)
+        {
+            return RequestScreenshotResult.Failed();
+        }
+
         var binding = await fcmTokenBindingRepository.GetByDeviceIdAsync(normalizedDeviceId, cancellationToken);
         if (binding is null)
         {
@@ -40,6 +47,7 @@ public sealed class RequestScreenshotHandler(
         }
 
         var dispatch = await deviceCommandDispatcher.RequestScreenshotAsync(
+            firebaseApp.FirebaseAppId,
             normalizedDeviceId,
             binding.FcmToken,
             cancellationToken);
@@ -88,6 +96,8 @@ public sealed class RequestScreenshotHandler(
                 {
                     deviceSource.CaseExternalId,
                     DeviceId = normalizedDeviceId,
+                    firebaseApp.Key,
+                    firebaseApp.ProjectId,
                     dispatch.MessageId
                 })),
             cancellationToken);

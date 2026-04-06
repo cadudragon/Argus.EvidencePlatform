@@ -148,6 +148,21 @@ public sealed class InfrastructureBootstrapService(
             """
             create schema if not exists argus;
 
+            create table if not exists argus.firebase_app_registrations
+            (
+                "Id" uuid primary key,
+                "Key" character varying(128) not null,
+                "DisplayName" character varying(256) not null,
+                "ProjectId" character varying(256) not null,
+                "ServiceAccountPath" character varying(2048) not null,
+                "IsActiveForNewCases" boolean not null,
+                "CreatedAt" timestamp with time zone not null,
+                "UpdatedAt" timestamp with time zone not null
+            );
+
+            create unique index if not exists "IX_firebase_app_registrations_Key"
+                on argus.firebase_app_registrations ("Key");
+
             create table if not exists argus.activation_tokens
             (
                 "Id" uuid primary key,
@@ -162,6 +177,12 @@ public sealed class InfrastructureBootstrapService(
 
             create unique index if not exists "IX_activation_tokens_Token"
                 on argus.activation_tokens ("Token");
+
+            alter table argus.cases
+                add column if not exists "FirebaseAppId" uuid null;
+
+            create index if not exists "IX_cases_FirebaseAppId"
+                on argus.cases ("FirebaseAppId");
 
             create table if not exists argus.device_sources
             (
@@ -180,6 +201,7 @@ public sealed class InfrastructureBootstrapService(
             create table if not exists argus.fcm_token_bindings
             (
                 "Id" uuid primary key,
+                "FirebaseAppId" uuid null,
                 "DeviceId" character varying(128) not null,
                 "FcmToken" character varying(4096) not null,
                 "BoundAt" timestamp with time zone not null,
@@ -188,6 +210,9 @@ public sealed class InfrastructureBootstrapService(
 
             create unique index if not exists "IX_fcm_token_bindings_DeviceId"
                 on argus.fcm_token_bindings ("DeviceId");
+
+            create index if not exists "IX_fcm_token_bindings_FirebaseAppId"
+                on argus.fcm_token_bindings ("FirebaseAppId");
 
             create table if not exists argus.notification_captures
             (
@@ -208,6 +233,23 @@ public sealed class InfrastructureBootstrapService(
 
             create index if not exists "IX_notification_captures_CaseId_CaptureTimestamp"
                 on argus.notification_captures ("CaseId", "CaptureTimestamp");
+
+            create table if not exists argus.text_capture_batches
+            (
+                "Id" uuid primary key,
+                "CaseId" uuid not null,
+                "CaseExternalId" character varying(128) not null,
+                "DeviceId" character varying(128) not null,
+                "Sha256" character varying(128) not null,
+                "CaptureTimestamp" timestamp with time zone not null,
+                "CaptureCount" integer not null,
+                "PayloadJson" jsonb not null,
+                "PackageNamesJson" jsonb not null,
+                "ReceivedAt" timestamp with time zone not null
+            );
+
+            create index if not exists "IX_text_capture_batches_CaseId_CaptureTimestamp"
+                on argus.text_capture_batches ("CaseId", "CaptureTimestamp");
             """,
             cancellationToken);
     }

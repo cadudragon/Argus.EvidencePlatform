@@ -9,14 +9,17 @@ public sealed class CaseTests
     public void Create_should_normalize_and_activate_case()
     {
         var createdAt = new DateTimeOffset(2026, 4, 1, 10, 30, 0, TimeSpan.Zero);
+        var firebaseAppId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
         var result = Case.Create(
             Guid.NewGuid(),
+            firebaseAppId,
             "  CASE-2026-001  ",
             "  Investigation  ",
             "  High priority  ",
             createdAt);
 
+        result.FirebaseAppId.Should().Be(firebaseAppId);
         result.ExternalCaseId.Should().Be("CASE-2026-001");
         result.Title.Should().Be("Investigation");
         result.Description.Should().Be("High priority");
@@ -30,6 +33,7 @@ public sealed class CaseTests
     {
         var result = Case.Create(
             Guid.NewGuid(),
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
             "CASE-2026-001",
             "Investigation",
             "   ",
@@ -43,6 +47,7 @@ public sealed class CaseTests
     {
         var action = () => Case.Create(
             Guid.NewGuid(),
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
             "   ",
             "Investigation",
             null,
@@ -58,6 +63,7 @@ public sealed class CaseTests
     {
         var action = () => Case.Create(
             Guid.NewGuid(),
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
             "CASE-2026-001",
             "   ",
             null,

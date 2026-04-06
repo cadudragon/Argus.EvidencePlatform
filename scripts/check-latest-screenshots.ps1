@@ -17,6 +17,7 @@ $docker = "C:\Program Files\Docker\Docker\resources\bin\docker.exe"
 $sql = @"
 select
     ei."CaptureTimestamp",
+    eb."ContainerName",
     eb."BlobName",
     eb."SizeBytes",
     eb."Sha256"

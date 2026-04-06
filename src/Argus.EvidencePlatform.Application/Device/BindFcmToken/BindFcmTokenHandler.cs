@@ -8,6 +8,7 @@ namespace Argus.EvidencePlatform.Application.Device.BindFcmToken;
 
 public sealed class BindFcmTokenHandler(
     IDeviceSourceRepository deviceSourceRepository,
+    IFirebaseAppRoutingResolver firebaseAppRoutingResolver,
     IFcmTokenBindingRepository fcmTokenBindingRepository,
     IAuditRepository auditRepository,
     IClock clock,
@@ -27,15 +28,21 @@ public sealed class BindFcmTokenHandler(
             return BindFcmTokenOutcome.Gone;
         }
 
+        var firebaseApp = await firebaseAppRoutingResolver.ResolveForCaseAsync(deviceSource.CaseId, cancellationToken);
+        if (firebaseApp is null)
+        {
+            return BindFcmTokenOutcome.Gone;
+        }
+
         var binding = await fcmTokenBindingRepository.GetByDeviceIdAsync(normalizedDeviceId, cancellationToken);
         if (binding is null)
         {
-            binding = FcmTokenBinding.Bind(Guid.NewGuid(), normalizedDeviceId, normalizedFcmToken, now);
+            binding = FcmTokenBinding.Bind(Guid.NewGuid(), firebaseApp.FirebaseAppId, normalizedDeviceId, normalizedFcmToken, now);
             await fcmTokenBindingRepository.AddAsync(binding, cancellationToken);
         }
         else
         {
-            binding.UpdateToken(normalizedFcmToken, now);
+            binding.UpdateToken(firebaseApp.FirebaseAppId, normalizedFcmToken, now);
         }
 
         await auditRepository.AddAsync(
@@ -52,7 +59,9 @@ public sealed class BindFcmTokenHandler(
                 JsonSerializer.Serialize(new
                 {
                     deviceSource.CaseExternalId,
-                    DeviceId = normalizedDeviceId
+                    DeviceId = normalizedDeviceId,
+                    firebaseApp.Key,
+                    firebaseApp.ProjectId
                 })),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);

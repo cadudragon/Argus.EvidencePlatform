@@ -43,6 +43,8 @@ public sealed class HealthEndpointsTests : IClassFixture<ApiWebApplicationFactor
 
 public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly string _databaseName = $"argus-evidence-platform-tests-{Guid.NewGuid():N}";
+
     public TestDeviceCommandDispatcher DeviceCommandDispatcher { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -54,9 +56,15 @@ public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>
             {
                 ["Authentication:Mode"] = "Mock",
                 ["Infrastructure:UseInMemoryPersistence"] = "true",
+                ["Infrastructure:InMemoryDatabaseName"] = _databaseName,
                 ["Wolverine:AutoProvision"] = "false",
                 ["ConnectionStrings:postgresdb"] = "Host=localhost;Port=5432;Database=argus_evidence_platform_test;Username=postgres;Password=postgres",
-                ["ConnectionStrings:blobs"] = "UseDevelopmentStorage=true"
+                ["ConnectionStrings:blobs"] = "UseDevelopmentStorage=true",
+                ["Firebase:Apps:0:Key"] = "fb-local-primary",
+                ["Firebase:Apps:0:DisplayName"] = "Local Primary",
+                ["Firebase:Apps:0:ProjectId"] = "argus-local-primary",
+                ["Firebase:Apps:0:ServiceAccountPath"] = "C:\\secrets\\argus-local-primary.json",
+                ["Firebase:Apps:0:IsActiveForNewCases"] = "true"
             });
         });
         builder.ConfigureTestServices(services =>
@@ -100,6 +108,7 @@ public sealed class TestDeviceCommandDispatcher : IDeviceCommandDispatcher
         new(DeviceCommandDispatchStatus.Success, "test-message-id");
 
     public Task<DeviceCommandDispatchResult> RequestScreenshotAsync(
+        Guid firebaseAppId,
         string deviceId,
         string fcmToken,
         CancellationToken cancellationToken)

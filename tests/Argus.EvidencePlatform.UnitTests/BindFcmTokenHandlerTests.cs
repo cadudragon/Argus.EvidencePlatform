@@ -14,6 +14,7 @@ public sealed class BindFcmTokenHandlerTests
     {
         var handler = new BindFcmTokenHandler(
             new FakeDeviceSourceRepository(),
+            new FakeFirebaseAppRoutingResolver(),
             new FakeFcmTokenBindingRepository(),
             new FakeAuditRepository(),
             new FakeClock(new DateTimeOffset(2026, 4, 2, 10, 0, 0, TimeSpan.Zero)),
@@ -38,10 +39,18 @@ public sealed class BindFcmTokenHandlerTests
             new DateTimeOffset(2026, 4, 2, 11, 0, 0, TimeSpan.Zero));
         var deviceSourceRepository = new FakeDeviceSourceRepository { ExistingSource = deviceSource };
         var bindingRepository = new FakeFcmTokenBindingRepository();
+        var routingResolver = new FakeFirebaseAppRoutingResolver
+        {
+            ExistingRouting = new FirebaseAppRoutingContext(
+                Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                "fb-local-primary",
+                "argus-local-primary")
+        };
         var auditRepository = new FakeAuditRepository();
         var unitOfWork = new FakeUnitOfWork();
         var handler = new BindFcmTokenHandler(
             deviceSourceRepository,
+            routingResolver,
             bindingRepository,
             auditRepository,
             new FakeClock(new DateTimeOffset(2026, 4, 2, 10, 0, 0, TimeSpan.Zero)),
@@ -55,6 +64,16 @@ public sealed class BindFcmTokenHandlerTests
         bindingRepository.AddedBindings.Should().ContainSingle();
         auditRepository.AddedEntries.Should().ContainSingle();
         unitOfWork.SaveChangesCalls.Should().Be(1);
+    }
+
+    private sealed class FakeFirebaseAppRoutingResolver : IFirebaseAppRoutingResolver
+    {
+        public FirebaseAppRoutingContext? ExistingRouting { get; set; }
+
+        public Task<FirebaseAppRoutingContext?> ResolveForCaseAsync(Guid caseId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ExistingRouting);
+        }
     }
 
     private sealed class FakeDeviceSourceRepository : IDeviceSourceRepository

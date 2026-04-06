@@ -1,6 +1,6 @@
 # Argus Evidence Platform Build Plan
 
-Data: 2026-04-02
+Data: 2026-04-03
 
 ## Escopo e fonte de verdade
 
@@ -49,6 +49,18 @@ Este plano e o runbook [backend-build-runbook.md](./backend-build-runbook.md) s�
 6. **Config local segura.** Segredos fora do repo; usar `user-secrets` ou env vars.
 7. **Prova executável acima de narrativa.** Toda entrega fecha com teste ou fluxo reproduzível.
 
+### Princípios vinculativos para transferência de evidência
+
+Estas regras orientam `BB-08` e qualquer evolução futura de upload/download/streaming:
+
+1. **Streaming primeiro para mídia.** Não ler nem devolver blobs grandes como `byte[]` quando um `Stream` resolve o problema.
+2. **Read path leve.** Leitura HTTP de evidência não deve fazer processamento pesado nem montagem de artefactos durante a request.
+3. **Range requests quando fizer sentido.** Downloads binários grandes devem ser compatíveis com leitura parcial e retomada.
+4. **Paginação desde o início.** Listagens de evidência por caso não devem crescer sem controlo.
+5. **Limites explícitos por endpoint.** Tamanho de body, cardinalidade e número de itens não ficam implícitos no default do servidor.
+6. **Pipeline assíncrono para composições futuras.** Se o backend passar a receber pequenos streams de imagens para gerar vídeo, isso entra como `ingest -> queue -> worker`, não como processamento inline na request.
+7. **Blob storage como stream endpoint.** PostgreSQL guarda metadados; blobs e streams longos continuam a viver no storage adequado.
+
 ### O que não fazer
 
 - não reintroduzir request decompression global se o contrato atual só pede gzip em `/api/screenshots`
@@ -77,7 +89,7 @@ Este plano e o runbook [backend-build-runbook.md](./backend-build-runbook.md) s�
 
 ### Em falta no contrato atual da app
 
-- `POST /api/text-captures`
+- nenhum endpoint device-facing conhecido do contrato atual da app está em falta
 
 ## Fluxo causal atual do backend
 
@@ -232,14 +244,60 @@ Objetivo: reduzir atrito operacional e endurecer o backend sem sair do modo loca
 
 Inclui:
 
+- suporte a múltiplas Firebase apps com roteamento por caso
 - scripts operacionais estáveis
 - documentação canónica no repo
 - skills locais do Codex
 - testes de regressão dos contratos críticos
 - leitura operacional mínima para evidências sem SQL manual
+- downloads HTTP de evidência em modo streaming
+- desenho já compatível com evolução futura para range requests e artefactos maiores
 
 Gate:
 - uma sessão nova consegue retomar o trabalho com o repo e os docs
+
+## BB novo antes do BB-08: multi-Firebase apps
+
+Antes do `BB-08`, o backend deve ganhar suporte a múltiplas Firebase apps/projetos.
+
+Motivação:
+
+- hoje o backend está operacionalmente acoplado a uma única Firebase app global
+- a base de casos vai crescer e precisa ser distribuída entre múltiplas apps
+- fazer isto depois do `BB-08` aumentaria o custo de refactor em enrollment, binding de `fcmToken` e dispatch de comando
+
+Direção arquitetural:
+
+- introduzir uma entidade/configuração explícita para Firebase app no backend
+- cada app Firebase terá uma flag operacional de ativação; o nome final da propriedade pode evoluir, mas a semântica é "esta app pode receber novos casos"
+- o backoffice ativa uma nova app Firebase quando quiser expandir capacidade
+- novos casos passam a ser atribuídos a uma Firebase app ativa
+- o caso persiste essa atribuição
+- `PUT /api/fcm-token` e `POST /api/device-commands/screenshot` passam a resolver a Firebase app a partir do caso/device, e não de uma configuração global única
+- `POST /api/cases` passa a falhar com `503` quando o backend não consegue resolver exatamente uma app elegível para novos casos
+
+Regra de roteamento esperada:
+
+- a escolha da Firebase app acontece no backend no momento em que um caso novo é preparado para operação
+- apenas apps marcadas como ativas entram na seleção de novos casos
+- casos já atribuídos continuam presos à Firebase app escolhida, salvo migração explícita futura
+
+Impacto esperado:
+
+- evita refactors tardios nos fluxos já fechados de `activate`, `fcm-token` e comando remoto
+- prepara o backend para balancear a base entre múltiplos projetos Firebase
+- mantém o contrato device-facing igual, mudando apenas a resolução interna da app Firebase correta
+
+Estado atual após `BB-07.1`:
+
+- o caso persiste `FirebaseAppId`
+- o binding atual de `fcmToken` persiste `FirebaseAppId`
+- o dispatch por Firebase resolve explicitamente a app pelo caso/device
+- o bootstrap persistente das apps usa `Firebase:Apps`
+
+Plano técnico detalhado:
+
+- [backend-bb-07.1-multi-firebase-plan.md](./backend-bb-07.1-multi-firebase-plan.md)
 
 ## O que não deve ir para a frente antes da Fase 5
 
@@ -247,6 +305,18 @@ Gate:
 - automações de compliance não suportadas pelo contrato atual da app
 - refactors horizontais que desfaçam os slices já estabilizados
 - features de UI/admin antes de fechar `notifications` e `text-captures`
+
+## Direção pós-BB-08 para streams de imagens e vídeo
+
+Depois de `BB-08`, a evolução recomendada para capturas long-running é:
+
+1. manter o request path focado em ingestão rápida e persistência segura
+2. persistir segmentos/imagens como unidade de ingestão
+3. enfileirar composição ou agregação de vídeo fora da request
+4. processar montagem, finalização e derivados em worker dedicado
+5. só introduzir chunking/resume quando o volume real justificar a complexidade
+
+Isto evita transformar o endpoint HTTP num gargalo de CPU, memória ou tempo de request.
 
 ## Estado alvo
 

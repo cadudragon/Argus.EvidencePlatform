@@ -3,6 +3,7 @@ namespace Argus.EvidencePlatform.Domain.Devices;
 public sealed class FcmTokenBinding
 {
     public Guid Id { get; private set; }
+    public Guid FirebaseAppId { get; private set; }
     public string DeviceId { get; private set; } = string.Empty;
     public string FcmToken { get; private set; } = string.Empty;
     public DateTimeOffset BoundAt { get; private set; }
@@ -14,6 +15,7 @@ public sealed class FcmTokenBinding
 
     public static FcmTokenBinding Bind(
         Guid id,
+        Guid firebaseAppId,
         string deviceId,
         string fcmToken,
         DateTimeOffset boundAt)
@@ -21,6 +23,11 @@ public sealed class FcmTokenBinding
         if (id == Guid.Empty)
         {
             throw new ArgumentException("Value cannot be empty.", nameof(id));
+        }
+
+        if (firebaseAppId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(firebaseAppId));
         }
 
         if (boundAt == default)
@@ -31,6 +38,7 @@ public sealed class FcmTokenBinding
         return new FcmTokenBinding
         {
             Id = id,
+            FirebaseAppId = firebaseAppId,
             DeviceId = NormalizeRequired(deviceId, nameof(deviceId)),
             FcmToken = NormalizeRequired(fcmToken, nameof(fcmToken)),
             BoundAt = boundAt,
@@ -38,13 +46,19 @@ public sealed class FcmTokenBinding
         };
     }
 
-    public void UpdateToken(string fcmToken, DateTimeOffset updatedAt)
+    public void UpdateToken(Guid firebaseAppId, string fcmToken, DateTimeOffset updatedAt)
     {
+        if (firebaseAppId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(firebaseAppId));
+        }
+
         if (updatedAt == default)
         {
             throw new ArgumentException("Value cannot be default.", nameof(updatedAt));
         }
 
+        FirebaseAppId = firebaseAppId;
         FcmToken = NormalizeRequired(fcmToken, nameof(fcmToken));
         UpdatedAt = updatedAt;
     }

@@ -46,7 +46,7 @@ public static class DependencyInjection
 
         builder.Services.AddSingleton<TokenCredential, DefaultAzureCredential>();
         builder.Services.AddSingleton(sp => CreateBlobServiceClient(sp, builder.Configuration));
-        builder.Services.AddSingleton<FirebaseAppAccessor>();
+        builder.Services.AddSingleton<FirebaseAppRegistry>();
         builder.Services.AddHostedService<FirebaseBootstrapService>();
         builder.Services.AddSingleton<IDeviceCommandDispatcher, FirebaseDeviceCommandDispatcher>();
         builder.Services.AddSingleton<IClock, SystemClock>();
@@ -56,7 +56,10 @@ public static class DependencyInjection
         builder.Services.AddScoped<IActivationTokenRepository, ActivationTokenRepository>();
         builder.Services.AddScoped<IDeviceSourceRepository, DeviceSourceRepository>();
         builder.Services.AddScoped<IFcmTokenBindingRepository, FcmTokenBindingRepository>();
+        builder.Services.AddScoped<IFirebaseAppRepository, FirebaseAppRepository>();
+        builder.Services.AddScoped<IFirebaseAppRoutingResolver, FirebaseAppRoutingResolver>();
         builder.Services.AddScoped<INotificationCaptureRepository, NotificationCaptureRepository>();
+        builder.Services.AddScoped<ITextCaptureBatchRepository, TextCaptureBatchRepository>();
         builder.Services.AddScoped<IEvidenceRepository, EvidenceRepository>();
         builder.Services.AddScoped<IExportJobRepository, ExportJobRepository>();
         builder.Services.AddScoped<IAuditRepository, AuditRepository>();
@@ -71,6 +74,11 @@ public static class DependencyInjection
             builder.Services.AddHostedService<InfrastructureBootstrapService>();
         }
 
+        if (!useInMemoryPersistence)
+        {
+            builder.Services.AddHostedService<FirebaseConfigurationBootstrapService>();
+        }
+
         if (!useInMemoryPersistence && builder.Configuration.GetValue("Wolverine:AutoProvision", false))
         {
             builder.Services.AddResourceSetupOnStartup(StartupAction.SetupOnly);
@@ -78,8 +86,9 @@ public static class DependencyInjection
 
         if (useInMemoryPersistence)
         {
+            var inMemoryDatabaseName = builder.Configuration.GetValue("Infrastructure:InMemoryDatabaseName", "argus-evidence-platform-tests");
             builder.Services.AddDbContext<ArgusDbContext>(
-                db => db.UseInMemoryDatabase("argus-evidence-platform-tests"));
+                db => db.UseInMemoryDatabase(inMemoryDatabaseName));
         }
 
         builder.UseWolverine(options =>

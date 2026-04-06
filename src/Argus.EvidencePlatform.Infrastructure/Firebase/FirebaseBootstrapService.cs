@@ -4,15 +4,13 @@ using Microsoft.Extensions.Logging;
 namespace Argus.EvidencePlatform.Infrastructure.Firebase;
 
 public sealed class FirebaseBootstrapService(
-    FirebaseAppAccessor accessor,
+    FirebaseAppRegistry accessor,
     ILogger<FirebaseBootstrapService> logger) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        if (accessor.IsConfigured)
-        {
-            logger.LogInformation("Firebase bootstrap completed.");
-        }
+        _ = accessor;
+        logger.LogInformation("Firebase bootstrap completed.");
 
         return Task.CompletedTask;
     }

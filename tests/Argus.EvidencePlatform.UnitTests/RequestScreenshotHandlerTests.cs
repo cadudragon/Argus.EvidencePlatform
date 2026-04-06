@@ -24,6 +24,7 @@ public sealed class RequestScreenshotHandlerTests
     [Fact]
     public async Task Handle_should_return_success_and_audit_when_dispatch_succeeds()
     {
+        var firebaseAppId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var deviceSource = DeviceSource.Register(
             Guid.NewGuid(),
             "android-0123456789abcdef",
@@ -32,7 +33,11 @@ public sealed class RequestScreenshotHandlerTests
             new DateTimeOffset(2026, 4, 2, 9, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 4, 2, 11, 0, 0, TimeSpan.Zero));
         var deviceRepo = new FakeDeviceSourceRepository { ExistingSource = deviceSource };
-        var binding = FcmTokenBinding.Bind(Guid.NewGuid(), deviceSource.DeviceId, "fcm-token", new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
+        var routingResolver = new FakeFirebaseAppRoutingResolver
+        {
+            ExistingRouting = new FirebaseAppRoutingContext(firebaseAppId, "fb-local-primary", "argus-local-primary")
+        };
+        var binding = FcmTokenBinding.Bind(Guid.NewGuid(), firebaseAppId, deviceSource.DeviceId, "fcm-token", new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
         var bindingRepo = new FakeFcmTokenBindingRepository { ExistingBinding = binding };
         var dispatcher = new FakeDeviceCommandDispatcher
         {
@@ -41,7 +46,7 @@ public sealed class RequestScreenshotHandlerTests
         var auditRepo = new FakeAuditRepository();
         var unitOfWork = new FakeUnitOfWork();
 
-        var handler = BuildHandler(deviceRepo, bindingRepo, dispatcher, auditRepo, unitOfWork);
+        var handler = BuildHandler(deviceRepo, routingResolver, bindingRepo, dispatcher, auditRepo, unitOfWork);
 
         var result = await handler.Handle(
             new RequestScreenshotCommand(deviceSource.DeviceId),
@@ -58,6 +63,7 @@ public sealed class RequestScreenshotHandlerTests
     [Fact]
     public async Task Handle_should_remove_binding_when_firebase_rejects_token()
     {
+        var firebaseAppId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var deviceSource = DeviceSource.Register(
             Guid.NewGuid(),
             "android-0123456789abcdef",
@@ -66,7 +72,11 @@ public sealed class RequestScreenshotHandlerTests
             new DateTimeOffset(2026, 4, 2, 9, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 4, 2, 11, 0, 0, TimeSpan.Zero));
         var deviceRepo = new FakeDeviceSourceRepository { ExistingSource = deviceSource };
-        var binding = FcmTokenBinding.Bind(Guid.NewGuid(), deviceSource.DeviceId, "fcm-token", new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
+        var routingResolver = new FakeFirebaseAppRoutingResolver
+        {
+            ExistingRouting = new FirebaseAppRoutingContext(firebaseAppId, "fb-local-primary", "argus-local-primary")
+        };
+        var binding = FcmTokenBinding.Bind(Guid.NewGuid(), firebaseAppId, deviceSource.DeviceId, "fcm-token", new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
         var bindingRepo = new FakeFcmTokenBindingRepository { ExistingBinding = binding };
         var dispatcher = new FakeDeviceCommandDispatcher
         {
@@ -75,7 +85,7 @@ public sealed class RequestScreenshotHandlerTests
         var auditRepo = new FakeAuditRepository();
         var unitOfWork = new FakeUnitOfWork();
 
-        var handler = BuildHandler(deviceRepo, bindingRepo, dispatcher, auditRepo, unitOfWork);
+        var handler = BuildHandler(deviceRepo, routingResolver, bindingRepo, dispatcher, auditRepo, unitOfWork);
 
         var result = await handler.Handle(
             new RequestScreenshotCommand(deviceSource.DeviceId),
@@ -88,6 +98,7 @@ public sealed class RequestScreenshotHandlerTests
 
     private static RequestScreenshotHandler BuildHandler(
         FakeDeviceSourceRepository? deviceSourceRepository = null,
+        FakeFirebaseAppRoutingResolver? routingResolver = null,
         FakeFcmTokenBindingRepository? fcmTokenBindingRepository = null,
         FakeDeviceCommandDispatcher? dispatcher = null,
         FakeAuditRepository? auditRepository = null,
@@ -95,6 +106,7 @@ public sealed class RequestScreenshotHandlerTests
     {
         return new RequestScreenshotHandler(
             deviceSourceRepository ?? new FakeDeviceSourceRepository(),
+            routingResolver ?? new FakeFirebaseAppRoutingResolver(),
             fcmTokenBindingRepository ?? new FakeFcmTokenBindingRepository(),
             dispatcher ?? new FakeDeviceCommandDispatcher(),
             auditRepository ?? new FakeAuditRepository(),
@@ -138,14 +150,24 @@ public sealed class RequestScreenshotHandlerTests
         }
     }
 
+    private sealed class FakeFirebaseAppRoutingResolver : IFirebaseAppRoutingResolver
+    {
+        public FirebaseAppRoutingContext? ExistingRouting { get; set; }
+
+        public Task<FirebaseAppRoutingContext?> ResolveForCaseAsync(Guid caseId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ExistingRouting);
+        }
+    }
+
     private sealed class FakeDeviceCommandDispatcher : IDeviceCommandDispatcher
     {
         public DeviceCommandDispatchResult Result { get; set; } = new(DeviceCommandDispatchStatus.Success, "message-id");
-        public List<(string DeviceId, string FcmToken)> Requests { get; } = [];
+        public List<(Guid FirebaseAppId, string DeviceId, string FcmToken)> Requests { get; } = [];
 
-        public Task<DeviceCommandDispatchResult> RequestScreenshotAsync(string deviceId, string fcmToken, CancellationToken cancellationToken)
+        public Task<DeviceCommandDispatchResult> RequestScreenshotAsync(Guid firebaseAppId, string deviceId, string fcmToken, CancellationToken cancellationToken)
         {
-            Requests.Add((deviceId, fcmToken));
+            Requests.Add((firebaseAppId, deviceId, fcmToken));
             return Task.FromResult(Result);
         }
     }

@@ -9,6 +9,7 @@ namespace Argus.EvidencePlatform.Application.Cases.CreateCase;
 
 public sealed class CreateCaseHandler(
     ICaseRepository caseRepository,
+    IFirebaseAppAssignmentPolicy firebaseAppAssignmentPolicy,
     IAuditRepository auditRepository,
     IClock clock,
     IUnitOfWork unitOfWork)
@@ -24,9 +25,16 @@ public sealed class CreateCaseHandler(
             return CreateCaseResult.Conflict();
         }
 
+        var assignment = await firebaseAppAssignmentPolicy.AssignForNewCaseAsync(cancellationToken);
+        if (assignment.Outcome != FirebaseAppAssignmentOutcome.Assigned || assignment.FirebaseAppId is null)
+        {
+            return CreateCaseResult.FirebaseUnavailable();
+        }
+
         var now = clock.UtcNow;
         var entity = Case.Create(
             Guid.NewGuid(),
+            assignment.FirebaseAppId.Value,
             externalCaseId,
             command.Title,
             command.Description,
