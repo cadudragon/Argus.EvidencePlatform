@@ -139,6 +139,7 @@ Important:
 Current architecture:
 
 - multi-Firebase support by case is implemented before `BB-08`
+- the next recommended backend block is `BB-07.2`, to clean up non-implemented compliance/scaffold concepts before `BB-08`
 - case creation assigns exactly one active Firebase app for new cases
 - device activation materializes the case assignment, not choose the Firebase app
 - `PUT /api/fcm-token` and `POST /api/device-commands/screenshot` resolve routing from the case/device context

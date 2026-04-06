@@ -27,9 +27,11 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-06 | DONE | `POST /api/notifications` | BB-02 |
 | BB-07 | DONE | `POST /api/text-captures` | BB-02 |
 | BB-07.1 | DONE | suporte a múltiplas Firebase apps com roteamento por app ativa | BB-03, BB-04 |
-| BB-08 | OPEN | leitura HTTP mínima para evidências do caso com streaming HTTP | BB-05, BB-07.1 |
+| BB-07.2 | OPEN | cleanup de scaffolds e conceitos de compliance não implementados | BB-07.1 |
+| BB-08 | OPEN | leitura HTTP mínima para evidências do caso com streaming HTTP | BB-05, BB-07.2 |
 | BB-08.1 | OPEN | pipeline assíncrono para segmentos de imagem e composição futura de vídeo | BB-08 |
-| BB-09 | OPEN | reforço de testes de regressão end-to-end | BB-06, BB-07, BB-07.1 |
+| BB-09 | OPEN | logging leve de solicitações e acessos por agente/caso | BB-08 |
+| BB-10 | OPEN | reforço de testes de regressão end-to-end | BB-06, BB-07, BB-07.1, BB-08, BB-09 |
 
 ## Regras operacionais
 
@@ -61,9 +63,11 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-06 | notifications slice | 5 | BB-02 |
 | BB-07 | text captures slice | 5 | BB-02 |
 | BB-07.1 | multi-Firebase apps por caso | 6 | BB-03, BB-04 |
-| BB-08 | leitura HTTP mínima das evidências | 6 | BB-05, BB-07.1 |
+| BB-07.2 | cleanup de scaffolds e compliance morto | 6 | BB-07.1 |
+| BB-08 | leitura HTTP mínima das evidências | 6 | BB-05, BB-07.2 |
 | BB-08.1 | pipeline assíncrono de segmentos e vídeo | 6 | BB-08 |
-| BB-09 | endurecimento de testes e regressão | 6 | BB-06, BB-07, BB-07.1 |
+| BB-09 | logging leve por agente/caso | 6 | BB-08 |
+| BB-10 | endurecimento de testes e regressão | 6 | BB-06, BB-07, BB-07.1, BB-08, BB-09 |
 
 ## Entregas detalhadas
 
@@ -271,6 +275,27 @@ Plano técnico detalhado:
 
 - [backend-bb-07.1-multi-firebase-plan.md](./backend-bb-07.1-multi-firebase-plan.md)
 
+### BB-07.2 — Cleanup de scaffolds e compliance morto
+
+- Fase: 6
+- Estado: OPEN
+- Objetivo: remover ou rebaixar explicitamente conceitos que hoje parecem funcionais, mas não têm implementação operacional no backend.
+- Escopo:
+  - mapear conceitos implementados, scaffolds úteis e conceitos mortos
+  - decidir o destino de `evidenceContainerName` face ao fluxo real em `staging`
+  - rever placeholders como `ImmutabilityState` e `LegalHoldState`
+  - rever metadata reservada de export final sem worker real
+  - rever o papel do projeto `Workers`
+  - atualizar docs canónicos para refletir apenas comportamento real ou scaffold explícito
+- Prova obrigatória:
+  - inventário final com decisão por conceito: `remover`, `manter como scaffold` ou `implementar depois`
+  - código e docs deixam de sugerir capacidades inexistentes como se estivessem prontas
+  - suite relevante continua verde após o cleanup
+- Gate checks:
+  - [ ] nenhum conceito morto permanece descrito como funcional
+  - [ ] nenhum scaffold remanescente fica ambíguo quanto ao seu estado
+  - [ ] o backend continua alinhado ao modelo local-first sem parafernália de compliance não usada
+
 ### BB-08 — Leitura HTTP mínima das evidências
 
 - Fase: 6
@@ -379,10 +404,29 @@ Critério prático para considerar o `BB-08` fechado:
   - worker consome a fila sem rebentar memória do processo da API
 - Gate checks:
   - [ ] composição futura de vídeo não acontece dentro da request HTTP
-  - [ ] existe backpressure explícito
-  - [ ] desenho separa ingestão, processamento e leitura
+- [ ] existe backpressure explícito
+- [ ] desenho separa ingestão, processamento e leitura
 
-### BB-09 — Endurecimento de regressão
+### BB-09 — Logging leve por agente/caso
+
+- Fase: 6
+- Estado: OPEN
+- Objetivo: registar de forma leve o que foi solicitado e acedido por agente dentro de um caso, sem virar trilha regulatória pesada.
+- Escopo:
+  - evento simples por `caseId`, actor e tipo de ação
+  - logging de solicitações relevantes e acessos relevantes
+  - leitura operacional mínima desses eventos
+  - desenho separado de qualquer framework futuro de compliance formal
+- Prova obrigatória:
+  - uma ação de leitura relevante gera registo observável
+  - uma ação operacional relevante gera registo observável
+  - a leitura desses eventos funciona sem SQL manual no fluxo mínimo definido
+- Gate checks:
+  - [ ] implementação permanece leve e barata de operar
+  - [ ] não reintroduz conceitos de compliance removidos no `BB-07.2`
+  - [ ] registo por agente/caso fica suficientemente claro para suporte operacional
+
+### BB-10 — Endurecimento de regressão
 
 - Fase: 6
 - Estado: OPEN
@@ -398,7 +442,7 @@ Critério prático para considerar o `BB-08` fechado:
 - Prova obrigatória:
   - suite relevante verde
 - Gate checks:
-  - [ ] contratos críticos protegidos contra regressão
+- [ ] contratos críticos protegidos contra regressão
 
 ## Critério de passagem entre entregas
 

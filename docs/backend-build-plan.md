@@ -245,10 +245,12 @@ Objetivo: reduzir atrito operacional e endurecer o backend sem sair do modo loca
 Inclui:
 
 - suporte a múltiplas Firebase apps com roteamento por caso
+- cleanup de conceitos de compliance/scaffold não implementados
 - scripts operacionais estáveis
 - documentação canónica no repo
 - skills locais do Codex
 - testes de regressão dos contratos críticos
+- logging leve de solicitações e acessos por agente/caso
 - leitura operacional mínima para evidências sem SQL manual
 - downloads HTTP de evidência em modo streaming
 - desenho já compatível com evolução futura para range requests e artefactos maiores
@@ -298,6 +300,65 @@ Estado atual após `BB-07.1`:
 Plano técnico detalhado:
 
 - [backend-bb-07.1-multi-firebase-plan.md](./backend-bb-07.1-multi-firebase-plan.md)
+
+## BB novo antes do BB-08: cleanup de scaffolds e compliance morto
+
+Antes do `BB-08`, o backend deve passar por um cleanup explícito dos conceitos que hoje aparecem em docs, models ou config, mas não têm comportamento real implementado.
+
+Motivação:
+
+- o repositório já carrega termos e campos que sugerem capacidades inexistentes
+- isso aumenta custo de manutenção, confusão operacional e risco de decisões erradas em cima de scaffolds mortos
+- limpar isto antes do `BB-08` evita construir leitura HTTP e novos fluxos em cima de conceitos que talvez sejam removidos
+
+Alvo do cleanup:
+
+- distinguir claramente o que é funcional hoje do que é apenas scaffold técnico
+- remover conceitos mortos quando não houver plano real de implementação no curto prazo
+- manter apenas os extension points que ainda tenham valor imediato e explícito
+- atualizar a documentação canónica para refletir o estado real do backend
+
+Escopo inicial recomendado:
+
+- rever `evidenceContainerName` versus `staging` à luz do fluxo real atual
+- rever placeholders de preservação forte como `ImmutabilityState` e `LegalHoldState`
+- rever metadata reservada de export final como `ManifestBlobName` e `PackageBlobName`
+- rever o papel real do projeto `Workers`
+- rever discurso documental de compliance diferido para não parecer comportamento implementado
+
+Critério de decisão:
+
+- se um conceito não tem código operacional, nem teste, nem BB aprovado para implementação próxima, deve sair do discurso funcional
+- se um conceito ainda é útil como extensão técnica imediata, ele deve ficar marcado explicitamente como scaffold
+- se um conceito vai continuar no modelo, precisa de nome e semântica que não induzam que já está operacional
+
+Resultado esperado:
+
+- backend mais simples de ler e operar
+- docs alinhados ao comportamento real
+- menos dívida conceitual antes de `BB-08`
+
+## BB futuro: logging leve por agente/caso
+
+Depois do cleanup e antes do endurecimento final de regressão, o backend deve ganhar um mecanismo leve para registar o que foi solicitado e acedido por agente dentro de um caso.
+
+Direção:
+
+- não tratar isto como trilha regulatória pesada
+- registar pedidos e acessos relevantes por `caseId`, actor e tipo de ação
+- manter o desenho leve, observável e barato de operar
+- separar este logging de qualquer framework futuro de compliance ou oversight formal
+
+Casos de uso mínimos esperados:
+
+- registar quando um agente pede leitura de artefactos de um caso
+- registar quando um agente aciona operações relevantes no caso
+- permitir leitura operacional simples desses eventos
+
+Guardrail:
+
+- este BB não deve reintroduzir a parafernália de compliance removida no cleanup
+- o foco é telemetria operacional simples por agente/caso
 
 ## O que não deve ir para a frente antes da Fase 5
 
