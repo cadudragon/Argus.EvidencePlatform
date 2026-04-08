@@ -163,6 +163,7 @@ For screenshots:
 
 The export helper downloads screenshots for a case into a local folder:
 - [export-case-screenshots.ps1](C:\Src\Argus.EvidencePlatform\scripts\export-case-screenshots.ps1)
+- canonical local export folder: [docs/exported-screenshots](C:\Src\Argus.EvidencePlatform\docs\exported-screenshots)
 
 ## Known Technical Constraints
 
@@ -170,6 +171,8 @@ The export helper downloads screenshots for a case into a local folder:
 - Local Firebase testing depends on a valid `fcmToken` being persisted for the active `deviceId`.
 - Existing local databases from before `BB-07.3` must be rebuilt through the documented cutover scripts before startup on the pure migrations-first model.
 - Azurite workspace restore must happen with the Azurite container stopped; do not hot-swap `/data` while the process is alive.
+- if local Azurite metadata points beyond the physical extent file, treat the local screenshot storage as corrupted; do not restore over it in place
+- if the export helper prints a target path but the file is not immediately visible, confirm the exact path on disk before assuming success
 - Do not reintroduce `EnsureCreated`, `CreateTables`, or runtime DDL for application schema. Schema evolution belongs in EF Core migrations under `src/Argus.EvidencePlatform.Infrastructure/Persistence/Migrations`.
 
 ## What Belongs Here vs Skills

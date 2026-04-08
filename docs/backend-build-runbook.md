@@ -387,6 +387,8 @@ Estratégia operacional final:
   - restaurar o snapshot do Azurite apenas com o container parado
   - voltar a iniciar o Azurite só depois do restore do workspace
   - validar contagens, blobs e o fluxo de screenshot
+- se o metastore do Azurite apontar para offsets além do tamanho físico do extent file, considerar o storage local corrompido e falhar o cutover
+- se o storage local de screenshots já estiver corrompido, o caminho correto é descartar as screenshots locais quebradas, zerar o volume `azurite_data` e recomeçar limpo
 - schema aplicacional:
   - não usar mais SQL manual de criação/alteração no runtime
   - não usar adoção automática de baseline no startup

@@ -413,6 +413,7 @@ Estado após `BB-07.3`:
 - o runtime puro aplica apenas `MigrateAsync()` sobre uma base já criada pelas migrations EF Core
 - a transição da base local existente passa por cutover explícito com `scripts/bb073-export-relational-data.ps1`, `scripts/bb073-import-relational-data.ps1` e `scripts/bb073-validate-cutover.ps1`, preservando PostgreSQL e blobs do Azurite
 - o restore do workspace do Azurite deve ocorrer com o serviço parado; não hot-swap de `/data` com o processo vivo
+- qualquer novo BB deve assumir como contexto local um ambiente limpo pós-reset das screenshots; não reaproveitar blobs locais já provados como corrompidos
 - PostgreSQL real valida:
   - base limpa via migrations
   - base legada reconstruída via cutover explícito sem perder os registos relacionais
