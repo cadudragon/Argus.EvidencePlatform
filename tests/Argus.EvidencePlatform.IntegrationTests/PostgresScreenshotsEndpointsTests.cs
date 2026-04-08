@@ -148,6 +148,7 @@ public sealed class PostgresScreenshotsEndpointsTests : IAsyncLifetime
 internal sealed class PostgresApiWebApplicationFactory(string postgresConnectionString) : WebApplicationFactory<Program>
 {
     public TestDeviceCommandDispatcher DeviceCommandDispatcher { get; } = new();
+    public TestBlobStore BlobStore { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -173,7 +174,10 @@ internal sealed class PostgresApiWebApplicationFactory(string postgresConnection
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IBlobStagingService>();
+            services.AddSingleton(BlobStore);
             services.AddSingleton<IBlobStagingService, TestBlobStagingService>();
+            services.RemoveAll<IEvidenceBlobReader>();
+            services.AddSingleton<IEvidenceBlobReader, TestEvidenceBlobReader>();
             services.RemoveAll<IDeviceCommandDispatcher>();
             services.AddSingleton<IDeviceCommandDispatcher>(DeviceCommandDispatcher);
         });

@@ -9,6 +9,7 @@ Hoje ele já funciona como:
 - backend HTTP para criação e consulta de casos;
 - backend de ingestão de artefactos binários;
 - timeline de artefactos por caso;
+- leitura HTTP mínima de artefactos por caso com download em streaming;
 - criação e consulta de jobs de export em estado de fila;
 - trilha de auditoria por caso;
 - pontos adicionais de `activate`, `pong`, `fcm-token`, `notifications` e `text-captures` que já existem no código atual.
@@ -96,17 +97,27 @@ Slices:
 
 - `Evidence/IngestArtifact`
 - `Evidence/GetTimeline`
+- `Evidence/ListArtifacts`
+- `Evidence/GetArtifactContent`
 
 Endpoints:
 
 - `POST /api/evidence/artifacts`
 - `GET /api/evidence/cases/{caseId}/timeline`
+- `GET /api/evidence/cases/{caseId}/artifacts`
+- `GET /api/evidence/artifacts/{artifactId}/content`
 
 Fluxo:
 
 1. enviar um ficheiro via `multipart/form-data`;
 2. o backend preserva metadados e blob;
-3. consultar a timeline para ver os itens recebidos.
+3. consultar a timeline para ver os itens recebidos;
+4. listar artefactos e descarregar conteúdo por HTTP quando for preciso ler o binário.
+
+Nota operacional:
+
+- o caminho preferencial de leitura mínima após `BB-08` é `GET /api/evidence/cases/{caseId}/artifacts` seguido de `GET /api/evidence/artifacts/{artifactId}/content`
+- o export do Azurite continua útil como fallback operacional, mas deixou de ser a prova principal do read path
 
 ### 3. Exports
 
@@ -234,6 +245,8 @@ Endpoint:
 - `Cases/GetCase`
 - `Evidence/IngestArtifact`
 - `Evidence/GetTimeline`
+- `Evidence/ListArtifacts`
+- `Evidence/GetArtifactContent`
 - `Exports/CreateCaseExport`
 - `Exports/GetExportJob`
 - `Audit/GetCaseAuditTrail`
@@ -337,6 +350,55 @@ Response:
   }
 ]
 ```
+
+### `GET /api/evidence/cases/{caseId}/artifacts`
+
+Lista evidências de um caso com paginação mínima e `downloadUrl`.
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "caseId": "11111111-1111-1111-1111-111111111111",
+      "sourceId": "local-source",
+      "artifactType": "Document",
+      "captureTimestamp": "2026-04-02T10:00:00+00:00",
+      "receivedAt": "2026-04-02T10:00:01+00:00",
+      "status": "Preserved",
+      "classification": "debug",
+      "contentType": "text/plain",
+      "sizeBytes": 12,
+      "sha256": "abc123",
+      "hasBinary": true,
+      "downloadUrl": "/api/evidence/artifacts/33333333-3333-3333-3333-333333333333/content"
+    }
+  ],
+  "nextCursor": null
+}
+```
+
+### `GET /api/evidence/artifacts/{artifactId}/content`
+
+Descarrega o blob do artefacto por streaming HTTP.
+
+Responses:
+
+- `200 OK`
+- `206 Partial Content` para `Range` válido
+- `404 Not Found`
+- `409 Conflict` se a metadata existir, mas o blob não puder ser aberto
+
+Prova operacional real registada:
+
+- caso: `CASE-ACT-20260403-194200`
+- `artifactId`: `4e988ffc-aa59-460b-a6b2-984c3e6a952d`
+- ficheiro descarregado por endpoint para:
+  - `docs/exported-screenshots/bb08-real-endpoint-proof-4e988ffc-aa59-460b-a6b2-984c3e6a952d.jpg`
+- hash validado:
+  - `b2ccdd33c7b997fcb7188a83b6d824301a521b68fce7b6b478f8666193c38201`
 
 ### `POST /api/exports`
 

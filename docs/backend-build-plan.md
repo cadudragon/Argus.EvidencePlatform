@@ -82,6 +82,8 @@ Estas regras orientam `BB-08` e qualquer evolução futura de upload/download/st
 - `GET /api/cases/{id}`
 - `POST /api/evidence/artifacts`
 - `GET /api/evidence/cases/{caseId}/timeline`
+- `GET /api/evidence/cases/{caseId}/artifacts`
+- `GET /api/evidence/artifacts/{artifactId}/content`
 - `POST /api/exports`
 - `GET /api/exports/{id}`
 - `GET /api/audit/cases/{caseId}`
@@ -148,6 +150,7 @@ App envia screenshot
 - comando on-demand screenshot
 - upload de screenshot gzip
 - export local das imagens do caso
+- leitura HTTP real de screenshot por `/api/evidence/cases/{caseId}/artifacts` + `/api/evidence/artifacts/{artifactId}/content`
 
 ## Fases de construção do backend
 
@@ -254,7 +257,9 @@ Inclui:
 - logging leve de solicitações e acessos por agente/caso
 - leitura operacional mínima para evidências sem SQL manual
 - downloads HTTP de evidência em modo streaming
+- listagem HTTP paginada de evidências por caso
 - desenho já compatível com evolução futura para range requests e artefactos maiores
+- prova operacional real do `BB-08` deve preferir o endpoint novo; export do Azurite fica como ferramenta auxiliar
 
 Gate:
 - uma sessão nova consegue retomar o trabalho com o repo e os docs

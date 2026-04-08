@@ -1,6 +1,8 @@
 using Argus.EvidencePlatform.Application.Common.Abstractions;
+using Argus.EvidencePlatform.Application.Evidence.GetArtifactContent;
 using Argus.EvidencePlatform.Application.Evidence.GetTimeline;
 using Argus.EvidencePlatform.Application.Evidence.IngestArtifact;
+using Argus.EvidencePlatform.Application.Evidence.ListArtifacts;
 using Argus.EvidencePlatform.Api.Validation;
 using Argus.EvidencePlatform.Contracts.Evidence;
 using Argus.EvidencePlatform.Domain.Evidence;
@@ -21,7 +23,9 @@ public static class EvidenceEndpoints
             .AddEndpointFilter<ValidationEndpointFilter<IngestArtifactForm>>()
             .DisableAntiforgery();
 
+        group.MapGet("/cases/{caseId:guid}/artifacts", ListArtifactsAsync);
         group.MapGet("/cases/{caseId:guid}/timeline", GetTimelineAsync);
+        group.MapGet("/artifacts/{artifactId:guid}/content", GetArtifactContentAsync);
 
         return builder;
     }
@@ -73,5 +77,60 @@ public static class EvidenceEndpoints
             cancellationToken);
 
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> ListArtifactsAsync(
+        Guid caseId,
+        [FromQuery] string? cursor,
+        [FromQuery] int? pageSize,
+        IMessageBus bus,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await bus.InvokeAsync<ListCaseArtifactsResponse>(
+                new ListCaseArtifactsQuery(caseId, cursor, pageSize),
+                cancellationToken);
+
+            return Results.Ok(response);
+        }
+        catch (ArgumentOutOfRangeException ex) when (string.Equals(ex.ParamName, "pageSize", StringComparison.Ordinal))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["pageSize"] = [ex.Message]
+            });
+        }
+        catch (ArgumentException ex) when (string.Equals(ex.ParamName, "cursor", StringComparison.Ordinal))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["cursor"] = ["cursor is invalid."]
+            });
+        }
+    }
+
+    private static async Task<IResult> GetArtifactContentAsync(
+        Guid artifactId,
+        IMessageBus bus,
+        CancellationToken cancellationToken)
+    {
+        var result = await bus.InvokeAsync<EvidenceContentResult>(
+            new GetArtifactContentQuery(artifactId),
+            cancellationToken);
+
+        return result.Outcome switch
+        {
+            EvidenceContentOutcome.Success => Results.File(
+                result.Content!.Content,
+                result.Content.ContentType,
+                fileDownloadName: result.Content.FileName,
+                lastModified: result.Content.LastModified,
+                entityTag: null,
+                enableRangeProcessing: result.Content.SupportsRangeProcessing),
+            EvidenceContentOutcome.NotFound => Results.NotFound(),
+            EvidenceContentOutcome.Conflict => Results.Conflict(),
+            _ => Results.StatusCode(StatusCodes.Status500InternalServerError)
+        };
     }
 }

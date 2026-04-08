@@ -66,5 +66,19 @@ public sealed class GetEvidenceTimelineHandlerTests
             LastRequestedCaseId = caseId;
             return Task.FromResult(response);
         }
+
+        public Task<ArtifactListPage> GetArtifactsPageAsync(
+            Guid caseId,
+            ArtifactListCursor? cursor,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<EvidenceArtifactDescriptor?> GetArtifactDescriptorAsync(Guid artifactId, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

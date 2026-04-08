@@ -52,6 +52,7 @@ public static class DependencyInjection
         builder.Services.AddSingleton<IClock, SystemClock>();
         builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         builder.Services.AddScoped<IBlobStagingService, AzureBlobStagingService>();
+        builder.Services.AddScoped<IEvidenceBlobReader, AzureEvidenceBlobReader>();
         builder.Services.AddScoped<ICaseRepository, CaseRepository>();
         builder.Services.AddScoped<IActivationTokenRepository, ActivationTokenRepository>();
         builder.Services.AddScoped<IDeviceSourceRepository, DeviceSourceRepository>();

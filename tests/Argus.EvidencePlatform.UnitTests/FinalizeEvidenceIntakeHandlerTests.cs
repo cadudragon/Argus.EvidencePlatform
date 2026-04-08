@@ -161,6 +161,20 @@ public sealed class FinalizeEvidenceIntakeHandlerTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<ArtifactListPage> GetArtifactsPageAsync(
+            Guid caseId,
+            ArtifactListCursor? cursor,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<EvidenceArtifactDescriptor?> GetArtifactDescriptorAsync(Guid artifactId, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeAuditRepository : IAuditRepository

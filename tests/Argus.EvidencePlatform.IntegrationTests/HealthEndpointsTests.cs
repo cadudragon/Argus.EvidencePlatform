@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Collections.Concurrent;
 using Argus.EvidencePlatform.Application.Common.Abstractions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Hosting;
@@ -46,6 +47,7 @@ public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>
     private readonly string _databaseName = $"argus-evidence-platform-tests-{Guid.NewGuid():N}";
 
     public TestDeviceCommandDispatcher DeviceCommandDispatcher { get; } = new();
+    public TestBlobStore BlobStore { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -70,14 +72,42 @@ public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IBlobStagingService>();
+            services.AddSingleton(BlobStore);
             services.AddSingleton<IBlobStagingService, TestBlobStagingService>();
+            services.RemoveAll<IEvidenceBlobReader>();
+            services.AddSingleton<IEvidenceBlobReader, TestEvidenceBlobReader>();
             services.RemoveAll<IDeviceCommandDispatcher>();
             services.AddSingleton<IDeviceCommandDispatcher>(DeviceCommandDispatcher);
         });
     }
 }
 
-internal sealed class TestBlobStagingService : IBlobStagingService
+public sealed class TestBlobStore
+{
+    private readonly ConcurrentDictionary<string, TestBlobRecord> _blobs = new(StringComparer.Ordinal);
+
+    public void Save(string containerName, string blobName, string contentType, byte[] content)
+    {
+        _blobs[GetKey(containerName, blobName)] = new TestBlobRecord(contentType, content, DateTimeOffset.UtcNow);
+    }
+
+    public TestBlobRecord? Get(string containerName, string blobName)
+    {
+        _blobs.TryGetValue(GetKey(containerName, blobName), out var blob);
+        return blob;
+    }
+
+    public bool Delete(string containerName, string blobName)
+    {
+        return _blobs.TryRemove(GetKey(containerName, blobName), out _);
+    }
+
+    private static string GetKey(string containerName, string blobName) => $"{containerName}|{blobName}";
+}
+
+public sealed record TestBlobRecord(string ContentType, byte[] Content, DateTimeOffset LastModified);
+
+internal sealed class TestBlobStagingService(TestBlobStore blobStore) : IBlobStagingService
 {
     public async Task<StagedBlobDescriptor> StageAsync(
         Stream content,
@@ -89,14 +119,44 @@ internal sealed class TestBlobStagingService : IBlobStagingService
         await content.CopyToAsync(memoryStream, cancellationToken);
         var bytes = memoryStream.ToArray();
         var sha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+        var blobName = $"{Guid.NewGuid():N}/{originalFileName}";
+        var normalizedContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType;
+
+        blobStore.Save("staging", blobName, normalizedContentType, bytes);
 
         return new StagedBlobDescriptor(
             "staging",
-            $"{Guid.NewGuid():N}/{originalFileName}",
-            string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
+            blobName,
+            normalizedContentType,
             bytes.LongLength,
             sha256,
             Guid.NewGuid().ToString("N"));
+    }
+}
+
+internal sealed class TestEvidenceBlobReader(TestBlobStore blobStore) : IEvidenceBlobReader
+{
+    public Task<EvidenceContentStream?> OpenReadAsync(
+        string containerName,
+        string blobName,
+        string? blobVersionId,
+        CancellationToken cancellationToken)
+    {
+        var blob = blobStore.Get(containerName, blobName);
+        if (blob is null)
+        {
+            return Task.FromResult<EvidenceContentStream?>(null);
+        }
+
+        var stream = new MemoryStream(blob.Content, writable: false);
+        return Task.FromResult<EvidenceContentStream?>(
+            new EvidenceContentStream(
+                stream,
+                blob.ContentType,
+                blob.Content.LongLength,
+                blob.LastModified,
+                SupportsRangeProcessing: true,
+                Path.GetFileName(blobName)));
     }
 }
 

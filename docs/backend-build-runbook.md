@@ -29,7 +29,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-07.1 | DONE | suporte a múltiplas Firebase apps com roteamento por app ativa | BB-03, BB-04 |
 | BB-07.2 | DONE | cleanup de scaffolds e conceitos de compliance não implementados | BB-07.1 |
 | BB-07.3 | DONE | migração para migrations-first / code-first real no schema relacional | BB-07.2 |
-| BB-08 | OPEN | leitura HTTP mínima para evidências do caso com streaming HTTP | BB-05, BB-07.3 |
+| BB-08 | DONE | leitura HTTP mínima para evidências do caso com streaming HTTP | BB-05, BB-07.3 |
 | BB-08.1 | OPEN | pipeline assíncrono para segmentos de imagem e composição futura de vídeo | BB-08 |
 | BB-09 | OPEN | logging leve de solicitações e acessos por agente/caso | BB-08 |
 | BB-10 | OPEN | reforço de testes de regressão end-to-end | BB-06, BB-07, BB-07.1, BB-08, BB-09 |
@@ -416,7 +416,7 @@ Resultado observado:
 ### BB-08 — Leitura HTTP mínima das evidências
 
 - Fase: 6
-- Estado: OPEN
+- Estado: DONE
 - Objetivo: reduzir dependência de SQL + Azurite tooling para ler evidências sem criar gargalos de memória no read path.
 - Escopo:
   - endpoint HTTP para listar evidências de um caso com paginação mínima
@@ -429,81 +429,58 @@ Resultado observado:
   - blob pode ser descarregado por HTTP em modo streaming
   - leitura parcial/range funciona quando aplicável
 - Gate checks:
-  - [ ] caminho operacional não depende de acesso direto à base
-  - [ ] download não bufferiza o blob inteiro em memória da API
-  - [ ] contrato de leitura não mistura download com processamento pesado
+  - [x] caminho operacional não depende de acesso direto à base
+  - [x] download não bufferiza o blob inteiro em memória da API
+  - [x] contrato de leitura não mistura download com processamento pesado
 
-#### Plano de continuação em sessão limpa
+Contrato final implementado:
 
-Contexto de arranque para qualquer nova sessão:
+- `GET /api/evidence/cases/{caseId}/artifacts`
+- `GET /api/evidence/artifacts/{artifactId}/content`
 
-- tratar `BB-08` como `read-only` e `streaming-first`
-- começar por screenshots, porque já têm blob + metadata + caso de uso operacional validado
-- não tentar resolver vídeo, composição de artefactos ou streams long-running neste `BB`
+Comportamento implementado:
 
-Contrato alvo recomendado para esta entrega:
+- a listagem devolve `items` + `nextCursor`
+- a ordenação segue `captureTimestamp desc`, `receivedAt desc`, `id desc`
+- a listagem expõe `downloadUrl` por artefacto
+- o download usa `Stream`, não `byte[]`
+- o download suporta `Range` no read path validado por testes de integração
+- `404` para artefacto inexistente
+- `409` quando a metadata relacional existe mas o blob correspondente não pode ser aberto
 
-1. `GET /api/evidence/cases/{caseId}/artifacts`
-2. `GET /api/evidence/artifacts/{artifactId}/content`
+Notas de desenho fechadas:
 
-Resposta alvo recomendada para listagem:
+- a timeline antiga em `GET /api/evidence/cases/{caseId}/timeline` foi preservada
+- o `BB-08` adiciona um read path mínimo; não substitui a timeline
+- a leitura de blob entrou por boundary explícita de infra, sem acoplar Azure Blob diretamente aos endpoints
 
-```json
-{
-  "items": [
-    {
-      "id": "guid",
-      "caseId": "guid",
-      "sourceId": "android-xxx",
-      "artifactType": "Screenshot",
-      "captureTimestamp": "2026-04-03T10:00:00Z",
-      "receivedAt": "2026-04-03T10:00:01Z",
-      "contentType": "image/jpeg",
-      "sizeBytes": 12345,
-      "sha256": "abc",
-      "hasBinary": true,
-      "downloadUrl": "/api/evidence/artifacts/guid/content"
-    }
-  ],
-  "nextCursor": "opaque-or-null"
-}
-```
+Prova executável registada:
 
-Comportamento alvo recomendado para download:
+- `C:\Progra~1\dotnet\dotnet.exe build Argus.EvidencePlatform.slnx`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.UnitTests\Argus.EvidencePlatform.UnitTests.csproj --filter "FullyQualifiedName~ListCaseArtifactsHandlerTests|FullyQualifiedName~GetArtifactContentHandlerTests"`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.IntegrationTests\Argus.EvidencePlatform.IntegrationTests.csproj --filter "FullyQualifiedName~EvidenceReadEndpointsTests"`
+- `C:\Progra~1\dotnet\dotnet.exe test Argus.EvidencePlatform.slnx`
 
-- devolver `Stream`, não `byte[]`
-- definir `Content-Type`
-- preencher `Content-Length` quando conhecido
-- suportar `Range` quando aplicável
-- devolver `404` se o artefacto não existir
-- devolver `409` se houver metadata inconsistente com o blob
+Resultado observado:
 
-Sequência recomendada de implementação:
+- listagem HTTP de artefactos por caso operacional sem SQL manual
+- download por `artifactId` operacional em modo streaming
+- `Range` parcial validado em integração com `206 Partial Content`
+- `404` e `409` validados para absence de artefacto e inconsistência metadata/blob
+- suite completa verde após introdução do read path novo
+- prova operacional real fechada por REST sobre screenshot do caso `CASE-ACT-20260403-194200`
+- screenshot real descarregada por `GET /api/evidence/artifacts/4e988ffc-aa59-460b-a6b2-984c3e6a952d/content`
+- ficheiro salvo em `docs/exported-screenshots/bb08-real-endpoint-proof-4e988ffc-aa59-460b-a6b2-984c3e6a952d.jpg`
+- hash SHA-256 validado contra PostgreSQL:
+  - `b2ccdd33c7b997fcb7188a83b6d824301a521b68fce7b6b478f8666193c38201`
+- ficheiro validado como imagem legível:
+  - `1220x2712`
 
-1. mapear exatamente como o screenshot atual é persistido em metadata + blob
-2. criar query/listagem paginada por caso para artefactos binários relevantes
-3. criar endpoint de download por `artifactId`
-4. adaptar Infrastructure para abrir stream do blob sem materializar o ficheiro inteiro
-5. adicionar testes de integração para:
-   - listagem `200`
-   - download `200`
-   - artefacto inexistente `404`
-   - `Range` parcial quando o host de teste o permitir
-6. só depois atualizar docs e marcar `BB-08` como `DONE`
+Notas de transição:
 
-O que fica explicitamente fora do `BB-08`:
-
-- composição de vídeo
-- fila/worker para segmentos de imagem
-- resumable upload/chunking
-- transformação inline de artefactos
-- unificação prematura de todos os tipos de evidência num endpoint complexo
-
-Critério prático para considerar o `BB-08` fechado:
-
-- uma sessão nova consegue listar screenshots de um caso por HTTP
-- uma sessão nova consegue descarregar um screenshot por HTTP
-- a leitura não depende de SQL manual nem de export script para esse fluxo mínimo
+- `BB-08` fica fechado com contrato, receipts, verdict `PASS` e prova operacional real materializada em `docs/exported-screenshots`
+- o próximo bloco canónico passa a ser `BB-08.1`
+- qualquer nova sessão deve tratar o read path introduzido aqui como baseline estável e não reabrir o desenho de listagem/download sem novo contrato explícito
 
 ### BB-08.1 — Pipeline assíncrono para segmentos de imagem e composição futura de vídeo
 
