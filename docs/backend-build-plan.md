@@ -383,10 +383,10 @@ Escopo recomendado:
 
 - introduzir estrutura oficial de migrations EF Core para a infra
 - gerar migration baseline coerente com o modelo atual
-- definir estratégia de baseline para bases locais já existentes sem quebrar o fluxo do developer
+- definir estratégia explícita de cutover para bases locais já existentes, sem adoção automática no runtime
 - remover do runtime o SQL manual de schema que passar a estar coberto por migrations
 - manter bootstrap apenas para criação de containers/blob storage e pré-condições externas ao schema aplicacional
-- reconciliar bases locais existentes com as remoções do `BB-07.2`
+- preservar os dados das bases locais existentes via export/rebuild/import controlado, incluindo snapshot do Azurite
 - provar que o fluxo `device-commands/screenshot -> /api/screenshots` volta a funcionar sem intervenção manual na base
 
 Princípios para a melhor abordagem:
@@ -410,11 +410,12 @@ Estado após `BB-07.3`:
 - migrations EF Core passaram a viver em `src/Argus.EvidencePlatform.Infrastructure/Persistence/Migrations`
 - `ArgusDbContext` continua a ser a fonte de verdade, com mappings extraídos para `Persistence/Configurations`
 - o runtime deixou de usar `CreateTablesAsync`, `EnsureCreated` e SQL manual para schema aplicacional
-- a base local existente é adotada automaticamente para `__EFMigrationsHistory` quando já contém o conjunto atual de tabelas `argus`
-- a migration `ReconcileLegacySchema` remove drift legado de `ImmutabilityState`, `LegalHoldState`, `ManifestBlobName` e `PackageBlobName`, e alinha `FirebaseAppId` com o modelo atual
+- o runtime puro aplica apenas `MigrateAsync()` sobre uma base já criada pelas migrations EF Core
+- a transição da base local existente passa por cutover explícito com `scripts/bb073-export-relational-data.ps1`, `scripts/bb073-import-relational-data.ps1` e `scripts/bb073-validate-cutover.ps1`, preservando PostgreSQL e blobs do Azurite
+- o restore do workspace do Azurite deve ocorrer com o serviço parado; não hot-swap de `/data` com o processo vivo
 - PostgreSQL real valida:
   - base limpa via migrations
-  - base legada sem history table adotada e reconciliada sem perder os registos inseridos no teste
+  - base legada reconstruída via cutover explícito sem perder os registos relacionais
   - fluxo `/api/screenshots` funcional sobre PostgreSQL após migrations
 
 ## BB futuro: logging leve por agente/caso

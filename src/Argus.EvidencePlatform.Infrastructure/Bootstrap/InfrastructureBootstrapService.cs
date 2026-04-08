@@ -1,6 +1,7 @@
 using Argus.EvidencePlatform.Infrastructure.Persistence;
 using Argus.EvidencePlatform.Infrastructure.Storage;
 using Azure.Storage.Blobs;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,6 @@ namespace Argus.EvidencePlatform.Infrastructure.Bootstrap;
 public sealed class InfrastructureBootstrapService(
     IServiceProvider serviceProvider,
     BlobServiceClient blobServiceClient,
-    RelationalDatabaseMigrator relationalDatabaseMigrator,
     IOptions<BlobStorageOptions> blobOptions,
     IOptions<InfrastructureBootstrapOptions> bootstrapOptions,
     ILogger<InfrastructureBootstrapService> logger) : IHostedService
@@ -35,7 +35,7 @@ public sealed class InfrastructureBootstrapService(
                 await using var scope = serviceProvider.CreateAsyncScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ArgusDbContext>();
 
-                await relationalDatabaseMigrator.EnsureMigratedAsync(dbContext, cancellationToken);
+                await EnsureDatabaseAsync(dbContext, cancellationToken);
                 await EnsureBlobContainersAsync(blobOptions.Value, cancellationToken);
 
                 logger.LogInformation(
@@ -61,13 +61,23 @@ public sealed class InfrastructureBootstrapService(
 
         await using var finalScope = serviceProvider.CreateAsyncScope();
         var finalDbContext = finalScope.ServiceProvider.GetRequiredService<ArgusDbContext>();
-        await relationalDatabaseMigrator.EnsureMigratedAsync(finalDbContext, cancellationToken);
+        await EnsureDatabaseAsync(finalDbContext, cancellationToken);
         await EnsureBlobContainersAsync(blobOptions.Value, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
+    }
+
+    private static async Task EnsureDatabaseAsync(ArgusDbContext dbContext, CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.IsInMemory())
+        {
+            return;
+        }
+
+        await dbContext.Database.MigrateAsync(cancellationToken);
     }
 
     private async Task EnsureBlobContainersAsync(

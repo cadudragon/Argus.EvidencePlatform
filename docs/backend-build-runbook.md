@@ -334,14 +334,14 @@ Resultado observado:
 - Escopo:
   - introduzir migrations versionadas no repositório
   - gerar baseline coerente com `ArgusDbContext`
-  - definir estratégia segura para bases locais limpas e bases locais já existentes
+  - definir estratégia segura para bases locais limpas e cutover explícito para bases locais já existentes
   - remover DDL manual de schema aplicacional em `InfrastructureBootstrapService`
   - manter bootstrap apenas para pré-condições fora do schema aplicacional
-  - reconciliar a base local atual com as remoções do `BB-07.2`
+  - preservar a base local atual via export/rebuild/import controlado, incluindo o snapshot do Azurite
   - garantir que a app volta a conseguir persistir screenshots e outros uploads sem drift de schema
 - Prova obrigatória:
   - base nova sobe via `MigrateAsync()` sem depender de DDL manual da aplicação
-  - base local já existente consegue continuar a arrancar com estratégia controlada de baseline
+  - base local já existente é reconstruída por migrations puras sem adoção automática no runtime
   - base local já existente mantém os dados atuais após a transição
   - fluxo de screenshot com a app volta a fechar end-to-end sem intervenção manual na base
   - suite relevante continua verde
@@ -366,22 +366,30 @@ Entregas implementadas:
 - mapeamentos EF extraídos para `Persistence/Configurations/*`
 - design-time factory adicionada para `dotnet-ef`
 - `dotnet-ef` versionado no repo via `.config/dotnet-tools.json`
-- migrations adicionadas:
+- migration canónica adicionada:
   - `20260406212005_InitialBaseline`
-  - `20260406212021_ReconcileLegacySchema`
-- bootstrap relacional movido para adoção controlada + `MigrateAsync()`
+- bootstrap relacional reduzido para `MigrateAsync()` puro
 - `EnsureCreated` removido do bootstrap de persistência Firebase
+- scripts de cutover explícito adicionados:
+  - `scripts/bb073-export-relational-data.ps1`
+  - `scripts/bb073-import-relational-data.ps1`
+  - `scripts/bb073-validate-cutover.ps1`
 
 Estratégia operacional final:
 
 - base limpa:
   - aplicar migrations normalmente
-- base local existente sem `__EFMigrationsHistory`:
-  - o runtime valida a presença do conjunto atual de tabelas `argus`
-  - insere o baseline na history table
-  - aplica apenas as migrations pendentes, incluindo `ReconcileLegacySchema`
+- base local existente:
+  - exportar dados relacionais por colunas explícitas
+  - exportar o conteúdo do Azurite associado ao ambiente local
+  - recriar a base via migrations EF Core
+  - reimportar os CSVs no schema novo
+  - restaurar o snapshot do Azurite apenas com o container parado
+  - voltar a iniciar o Azurite só depois do restore do workspace
+  - validar contagens, blobs e o fluxo de screenshot
 - schema aplicacional:
   - não usar mais SQL manual de criação/alteração no runtime
+  - não usar adoção automática de baseline no startup
 
 Prova executável registada:
 
@@ -396,11 +404,12 @@ Prova executável registada:
 
 Resultado observado:
 
-- base limpa em PostgreSQL aplica `InitialBaseline` e `ReconcileLegacySchema`
-- base legada sem history table é adotada automaticamente e reconciliada sem perder os registos inseridos no teste
-- colunas mortas de `BB-07.2` deixam de existir após a reconciliação
+- base limpa em PostgreSQL aplica `InitialBaseline`
+- base local existente foi exportada com PostgreSQL + Azurite, recriada por migrations puras e restaurada sem perda dos registos relacionais nem dos blobs
+- o runtime sobe sem adoção automática nem migration de reconciliação legada
 - `/api/screenshots` volta a funcionar sobre PostgreSQL real após migrations
 - suite unitária, integração, arquitetura e solution completa verdes
+- o restore do Azurite não pode hot-swap `/data` com o processo vivo; o procedimento canónico é parar o container, restaurar o workspace e só depois reiniciar o serviço
 
 ### BB-08 — Leitura HTTP mínima das evidências
 

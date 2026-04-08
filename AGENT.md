@@ -142,8 +142,8 @@ Current architecture:
 - `BB-07.2` cleaned dead compliance/scaffold concepts before `BB-08`
 - `BB-07.3` moved relational schema evolution to EF Core migrations-first
 - application schema DDL no longer lives in runtime bootstrap SQL
-- existing local databases are adopted automatically into `__EFMigrationsHistory` before pending migrations are applied
-- legacy drift from pre-`BB-07.2` columns such as `ImmutabilityState`, `LegalHoldState`, `ManifestBlobName`, and `PackageBlobName` is reconciled by the EF migration `ReconcileLegacySchema`
+- existing local databases from before `BB-07.3` require an explicit data cutover, not runtime adoption
+- the canonical local cutover is `export relational data + Azurite snapshot -> rebuild via EF migrations -> import -> validate`
 - the next structural backend block is `BB-08`
 - case creation assigns exactly one active Firebase app for new cases
 - device activation materializes the case assignment, not choose the Firebase app
@@ -168,7 +168,8 @@ The export helper downloads screenshots for a case into a local folder:
 
 - The screenshot ingestion contract uses `captureTimestamp` as Unix epoch milliseconds from Android. Backend code already normalizes this.
 - Local Firebase testing depends on a valid `fcmToken` being persisted for the active `deviceId`.
-- Existing local databases from before `BB-07.3` may still start without `__EFMigrationsHistory`; runtime adoption into migrations history is now part of startup behavior.
+- Existing local databases from before `BB-07.3` must be rebuilt through the documented cutover scripts before startup on the pure migrations-first model.
+- Azurite workspace restore must happen with the Azurite container stopped; do not hot-swap `/data` while the process is alive.
 - Do not reintroduce `EnsureCreated`, `CreateTables`, or runtime DDL for application schema. Schema evolution belongs in EF Core migrations under `src/Argus.EvidencePlatform.Infrastructure/Persistence/Migrations`.
 
 ## What Belongs Here vs Skills

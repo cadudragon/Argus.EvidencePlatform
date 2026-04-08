@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$CaseExternalId,
 
-    [string]$OutputDirectory = "C:\Src\exported-screenshots"
+    [string]$OutputDirectory = "C:\Src\Argus.EvidencePlatform\docs\exported-screenshots"
 )
 
 $ErrorActionPreference = "Stop"
@@ -65,7 +65,17 @@ $programPath = Join-Path $projectDir "Program.cs"
 $inputPath = Join-Path $tempRoot "downloads.json"
 
 New-Item -ItemType Directory -Path $projectDir -Force | Out-Null
-@($downloads) | ConvertTo-Json -Depth 4 | Set-Content -Path $inputPath
+[System.Collections.Generic.List[object]]$downloadList = @()
+foreach ($download in $downloads) {
+    $downloadList.Add($download)
+}
+
+$downloadsJson = $downloadList | ConvertTo-Json -Depth 4 -Compress
+if ($downloadList.Count -eq 1) {
+    $downloadsJson = "[$downloadsJson]"
+}
+
+Set-Content -Path $inputPath -Value $downloadsJson
 
 $projectXml = @"
 <Project Sdk="Microsoft.NET.Sdk">
@@ -131,8 +141,15 @@ for (var index = 0; index < downloads.Count; index++)
         .GetBlobContainerClient(row.ContainerName)
         .GetBlobClient(row.BlobName);
 
-    await blobClient.DownloadToAsync(targetPath);
-    Console.WriteLine(targetPath);
+    try
+    {
+        await blobClient.DownloadToAsync(targetPath);
+        Console.WriteLine(targetPath);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"FAILED|{targetPath}|{ex.GetType().Name}|{ex.Message}");
+    }
 }
 
 return 0;

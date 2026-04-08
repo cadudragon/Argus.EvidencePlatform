@@ -9,7 +9,6 @@ using Argus.EvidencePlatform.Contracts.Cases;
 using Argus.EvidencePlatform.Contracts.Evidence;
 using Argus.EvidencePlatform.Contracts.Screenshots;
 using Argus.EvidencePlatform.Domain.Devices;
-using Argus.EvidencePlatform.Infrastructure.Bootstrap;
 using Argus.EvidencePlatform.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
@@ -19,7 +18,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.PostgreSql;
 
 namespace Argus.EvidencePlatform.IntegrationTests;
@@ -40,8 +38,7 @@ public sealed class PostgresScreenshotsEndpointsTests : IAsyncLifetime
             .UseNpgsql(_postgres.GetConnectionString())
             .Options;
         await using var dbContext = new ArgusDbContext(options);
-        var migrator = new RelationalDatabaseMigrator(NullLogger<RelationalDatabaseMigrator>.Instance);
-        await migrator.EnsureMigratedAsync(dbContext, CancellationToken.None);
+        await dbContext.Database.MigrateAsync(CancellationToken.None);
     }
 
     public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();
