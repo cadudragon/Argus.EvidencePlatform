@@ -188,9 +188,16 @@ Expected request:
 ```json
 {
   "deviceId": "android-0123456789abcdef",
-  "fcmToken": "fcm-token-value"
+  "fcmToken": "fcm-token-value",
+  "fcmCommandKey": {
+    "alg": "ECDH-P256",
+    "kid": "device-ecdh-0123456789abcdef",
+    "publicKey": "base64url-spki-public-key"
+  }
 }
 ```
+
+FCM command messages must use the encrypted `enc/alg/kid/dkid/iv/ct` data envelope in production. Plaintext command payloads are only acceptable behind an explicit local debug fallback.
 
 Best practices:
 

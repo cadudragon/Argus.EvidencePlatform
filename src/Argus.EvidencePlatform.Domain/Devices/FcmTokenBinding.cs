@@ -6,6 +6,9 @@ public sealed class FcmTokenBinding
     public Guid FirebaseAppId { get; private set; }
     public string DeviceId { get; private set; } = string.Empty;
     public string FcmToken { get; private set; } = string.Empty;
+    public string FcmCommandKeyAlg { get; private set; } = string.Empty;
+    public string FcmCommandKeyKid { get; private set; } = string.Empty;
+    public string FcmCommandKeyPublicKey { get; private set; } = string.Empty;
     public DateTimeOffset BoundAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -18,6 +21,9 @@ public sealed class FcmTokenBinding
         Guid firebaseAppId,
         string deviceId,
         string fcmToken,
+        string fcmCommandKeyAlg,
+        string fcmCommandKeyKid,
+        string fcmCommandKeyPublicKey,
         DateTimeOffset boundAt)
     {
         if (id == Guid.Empty)
@@ -41,12 +47,21 @@ public sealed class FcmTokenBinding
             FirebaseAppId = firebaseAppId,
             DeviceId = NormalizeRequired(deviceId, nameof(deviceId)),
             FcmToken = NormalizeRequired(fcmToken, nameof(fcmToken)),
+            FcmCommandKeyAlg = NormalizeRequired(fcmCommandKeyAlg, nameof(fcmCommandKeyAlg)),
+            FcmCommandKeyKid = NormalizeRequired(fcmCommandKeyKid, nameof(fcmCommandKeyKid)),
+            FcmCommandKeyPublicKey = NormalizeRequired(fcmCommandKeyPublicKey, nameof(fcmCommandKeyPublicKey)),
             BoundAt = boundAt,
             UpdatedAt = boundAt
         };
     }
 
-    public void UpdateToken(Guid firebaseAppId, string fcmToken, DateTimeOffset updatedAt)
+    public void UpdateToken(
+        Guid firebaseAppId,
+        string fcmToken,
+        string fcmCommandKeyAlg,
+        string fcmCommandKeyKid,
+        string fcmCommandKeyPublicKey,
+        DateTimeOffset updatedAt)
     {
         if (firebaseAppId == Guid.Empty)
         {
@@ -60,7 +75,17 @@ public sealed class FcmTokenBinding
 
         FirebaseAppId = firebaseAppId;
         FcmToken = NormalizeRequired(fcmToken, nameof(fcmToken));
+        FcmCommandKeyAlg = NormalizeRequired(fcmCommandKeyAlg, nameof(fcmCommandKeyAlg));
+        FcmCommandKeyKid = NormalizeRequired(fcmCommandKeyKid, nameof(fcmCommandKeyKid));
+        FcmCommandKeyPublicKey = NormalizeRequired(fcmCommandKeyPublicKey, nameof(fcmCommandKeyPublicKey));
         UpdatedAt = updatedAt;
+    }
+
+    public bool HasCommandKey()
+    {
+        return !string.IsNullOrWhiteSpace(FcmCommandKeyAlg)
+            && !string.IsNullOrWhiteSpace(FcmCommandKeyKid)
+            && !string.IsNullOrWhiteSpace(FcmCommandKeyPublicKey);
     }
 
     private static string NormalizeRequired(string value, string paramName)

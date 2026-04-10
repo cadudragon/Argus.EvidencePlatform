@@ -115,7 +115,7 @@ Operador pede screenshot
   -> POST /api/device-commands/screenshot
     -> Device/RequestScreenshot
       -> resolve deviceId -> fcmToken
-      -> envia FCM {"cmd":"screenshot"}
+      -> envia envelope FCM cifrado enc/alg/kid/dkid/iv/ct
 ```
 
 ```text
@@ -205,12 +205,12 @@ Objetivo: permitir que o backend comande o device correto.
 Inclui:
 
 - `PUT /api/fcm-token`
-- persistência `deviceId -> fcmToken`
+- persistência `deviceId -> fcmToken + fcmCommandKey`
 - integração com Firebase Admin SDK
 - `POST /api/device-commands/screenshot`
 
 Gate:
-- backend envia FCM para o device certo
+- backend envia envelope FCM cifrado para o device certo
 
 ### Fase 4 — Screenshot on-demand end-to-end
 
@@ -294,7 +294,7 @@ Impacto esperado:
 
 - evita refactors tardios nos fluxos já fechados de `activate`, `fcm-token` e comando remoto
 - prepara o backend para balancear a base entre múltiplos projetos Firebase
-- mantém o contrato device-facing igual, mudando apenas a resolução interna da app Firebase correta
+- mantém o roteamento device-facing, mudando apenas a resolução interna da app Firebase correta
 
 Estado atual após `BB-07.1`:
 

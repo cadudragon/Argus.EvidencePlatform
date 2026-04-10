@@ -20,7 +20,7 @@ public sealed class PostgresMigrationsTests : IAsyncLifetime
     public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();
 
     [Fact]
-    public async Task Clean_database_should_apply_initial_baseline_only()
+    public async Task Clean_database_should_apply_all_current_migrations()
     {
         await using var dbContext = CreateDbContext();
         await dbContext.Database.MigrateAsync();
@@ -31,13 +31,14 @@ public sealed class PostgresMigrationsTests : IAsyncLifetime
         var migrations = await QueryStringListAsync(
             connection,
             """select "MigrationId" from public."__EFMigrationsHistory" order by "MigrationId";""");
-        migrations.Should().ContainSingle();
-        migrations[0].Should().Be("20260406212005_InitialBaseline");
+        migrations.Should().Equal(
+            "20260406212005_InitialBaseline",
+            "20260410155524_AddEncryptedFcmCommandEnvelope");
 
         var historyCount = await QueryScalarAsync<long>(
             connection,
             """select count(*) from public."__EFMigrationsHistory";""");
-        historyCount.Should().Be(1);
+        historyCount.Should().Be(2);
     }
 
     private ArgusDbContext CreateDbContext()

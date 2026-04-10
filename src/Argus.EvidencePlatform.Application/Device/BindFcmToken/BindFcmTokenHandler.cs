@@ -21,6 +21,9 @@ public sealed class BindFcmTokenHandler(
     {
         var normalizedDeviceId = NormalizeRequired(command.DeviceId, nameof(command.DeviceId));
         var normalizedFcmToken = NormalizeRequired(command.FcmToken, nameof(command.FcmToken));
+        var normalizedCommandKeyAlg = NormalizeRequired(command.FcmCommandKey.Alg, nameof(command.FcmCommandKey.Alg));
+        var normalizedCommandKeyKid = NormalizeRequired(command.FcmCommandKey.Kid, nameof(command.FcmCommandKey.Kid));
+        var normalizedCommandKeyPublicKey = NormalizeRequired(command.FcmCommandKey.PublicKey, nameof(command.FcmCommandKey.PublicKey));
         var deviceSource = await deviceSourceRepository.GetByDeviceIdAsync(normalizedDeviceId, cancellationToken);
         var now = clock.UtcNow;
         if (deviceSource is null || !deviceSource.IsActive(now))
@@ -37,12 +40,26 @@ public sealed class BindFcmTokenHandler(
         var binding = await fcmTokenBindingRepository.GetByDeviceIdAsync(normalizedDeviceId, cancellationToken);
         if (binding is null)
         {
-            binding = FcmTokenBinding.Bind(Guid.NewGuid(), firebaseApp.FirebaseAppId, normalizedDeviceId, normalizedFcmToken, now);
+            binding = FcmTokenBinding.Bind(
+                Guid.NewGuid(),
+                firebaseApp.FirebaseAppId,
+                normalizedDeviceId,
+                normalizedFcmToken,
+                normalizedCommandKeyAlg,
+                normalizedCommandKeyKid,
+                normalizedCommandKeyPublicKey,
+                now);
             await fcmTokenBindingRepository.AddAsync(binding, cancellationToken);
         }
         else
         {
-            binding.UpdateToken(firebaseApp.FirebaseAppId, normalizedFcmToken, now);
+            binding.UpdateToken(
+                firebaseApp.FirebaseAppId,
+                normalizedFcmToken,
+                normalizedCommandKeyAlg,
+                normalizedCommandKeyKid,
+                normalizedCommandKeyPublicKey,
+                now);
         }
 
         await auditRepository.AddAsync(
@@ -60,6 +77,8 @@ public sealed class BindFcmTokenHandler(
                 {
                     deviceSource.CaseExternalId,
                     DeviceId = normalizedDeviceId,
+                    FcmCommandKeyAlg = normalizedCommandKeyAlg,
+                    FcmCommandKeyKid = normalizedCommandKeyKid,
                     firebaseApp.Key,
                     firebaseApp.ProjectId
                 })),

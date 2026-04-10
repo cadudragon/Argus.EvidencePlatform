@@ -6,20 +6,19 @@ namespace Argus.EvidencePlatform.Infrastructure.Firebase;
 
 public sealed class FirebaseDeviceCommandDispatcher(
     FirebaseAppRegistry firebaseAppRegistry,
+    IFcmCommandDataPayloadBuilder payloadBuilder,
     ILogger<FirebaseDeviceCommandDispatcher> logger) : IDeviceCommandDispatcher
 {
-    public async Task<DeviceCommandDispatchResult> RequestScreenshotAsync(
-        Guid firebaseAppId,
-        string deviceId,
-        string fcmToken,
+    public async Task<DeviceCommandDispatchResult> DispatchAsync(
+        DeviceCommandDispatchRequest request,
         CancellationToken cancellationToken)
     {
-        if (!firebaseAppRegistry.TryGet(firebaseAppId, out var firebaseApp) || firebaseApp is null)
+        if (!firebaseAppRegistry.TryGet(request.FirebaseAppId, out var firebaseApp) || firebaseApp is null)
         {
             logger.LogError(
                 "Firebase command dispatch requested for device {DeviceId}, but Firebase app {FirebaseAppId} is not configured.",
-                deviceId,
-                firebaseAppId);
+                request.DeviceId,
+                request.FirebaseAppId);
             return new DeviceCommandDispatchResult(DeviceCommandDispatchStatus.Failed, null, "firebase_not_configured");
         }
 
@@ -28,17 +27,15 @@ public sealed class FirebaseDeviceCommandDispatcher(
             var messageId = await FirebaseMessaging.GetMessaging(firebaseApp).SendAsync(
                 new Message
                 {
-                    Token = fcmToken,
-                    Data = new Dictionary<string, string>
-                    {
-                        ["cmd"] = "screenshot"
-                    }
+                    Token = request.FcmToken,
+                    Data = payloadBuilder.Build(request)
                 },
                 cancellationToken);
 
             logger.LogInformation(
-                "FCM screenshot command sent to device {DeviceId} with message id {MessageId}.",
-                deviceId,
+                "FCM command {Command} sent to device {DeviceId} with message id {MessageId}.",
+                request.Command,
+                request.DeviceId,
                 messageId);
 
             return new DeviceCommandDispatchResult(DeviceCommandDispatchStatus.Success, messageId);
@@ -48,7 +45,7 @@ public sealed class FirebaseDeviceCommandDispatcher(
             logger.LogWarning(
                 exception,
                 "FCM token rejected for device {DeviceId}; binding will be invalidated.",
-                deviceId);
+                request.DeviceId);
 
             return new DeviceCommandDispatchResult(DeviceCommandDispatchStatus.TokenInvalid, null, exception.MessagingErrorCode.ToString());
         }
@@ -57,7 +54,7 @@ public sealed class FirebaseDeviceCommandDispatcher(
             logger.LogError(
                 exception,
                 "Failed to send screenshot command to device {DeviceId}.",
-                deviceId);
+                request.DeviceId);
 
             return new DeviceCommandDispatchResult(DeviceCommandDispatchStatus.Failed, null, exception.Message);
         }

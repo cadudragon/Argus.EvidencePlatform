@@ -22,6 +22,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-02 | DONE | `POST /api/activate` e `POST /api/pong` funcionais | BB-00 |
 | BB-03 | DONE | `PUT /api/fcm-token` funcional | BB-02 |
 | BB-04 | DONE | `POST /api/device-commands/screenshot` com Firebase Admin SDK | BB-03 |
+| BB-04.1 | DONE | comandos FCM cifrados com envelope ECDH/HKDF/AES-GCM | BB-04 |
 | BB-05 | DONE | `POST /api/screenshots` com gzip apenas neste endpoint | BB-02, BB-04 |
 | BB-05.1 | DONE | export local de screenshots a partir do Azurite | BB-05 |
 | BB-06 | DONE | `POST /api/notifications` | BB-02 |
@@ -59,6 +60,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 | BB-02 | enrollment e device liveness | 2 | BB-00 |
 | BB-03 | bind de FCM token | 3 | BB-02 |
 | BB-04 | comando screenshot por Firebase | 3 | BB-03 |
+| BB-04.1 | envelope cifrado para comandos FCM | 3 | BB-04 |
 | BB-05 | ingestão de screenshot com gzip scoped | 4 | BB-02, BB-04 |
 | BB-05.1 | export operacional de screenshots | 4 | BB-05 |
 | BB-06 | notifications slice | 5 | BB-02 |
@@ -160,6 +162,30 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
 - Gate checks:
   - [x] usa pacote oficial do Firebase para .NET
   - [x] config lida de `Firebase:Enabled` e `Firebase:Apps:*`
+
+### BB-04.1 — Encrypted FCM Command Envelope
+
+- Fase: 3
+- Estado: DONE
+- Objetivo: substituir o contrato FCM plaintext por envelope cifrado compatível com Android BB-06.1.
+- Escopo:
+  - `PUT /api/fcm-token` aceita e persiste `fcmCommandKey`
+  - `FcmTokenBinding` guarda `fcmCommandKey.alg`, `fcmCommandKey.kid` e `fcmCommandKey.publicKey`
+  - `POST /api/device-commands/screenshot` mantém o endpoint existente, mas o dispatcher envia `enc/alg/kid/dkid/iv/ct`
+  - comando interno `screenshot` contém `iat`, `exp` e `nonce`
+  - política mínima por caso cria `streamStartFps = 2` como default para comandos internos futuros
+  - plaintext FCM fica fora do contrato de produção e só pode existir por fallback debug explícito
+- Prova obrigatória:
+  - envelope gerado pode ser decriptado por keypair compatível
+  - ciphertext adulterado falha autenticação GCM
+  - payload FCM de produção não contém `cmd`
+  - `dkid` vem da chave persistida do device
+  - endpoints de device continuam verdes
+- Gate checks:
+  - [x] `fcmCommandKey` é obrigatório no bind FCM de produção
+  - [x] private key do device nunca sai do Android
+  - [x] backend usa private key configurada por segredo, não commitada
+  - [x] não implementa live/video, mTLS, tickle/fetch ou wrapper Ed25519
 
 ### BB-05 — Ingestão de screenshot com gzip scoped
 

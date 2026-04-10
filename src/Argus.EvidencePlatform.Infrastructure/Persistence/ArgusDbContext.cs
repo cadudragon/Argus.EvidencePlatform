@@ -14,6 +14,7 @@ namespace Argus.EvidencePlatform.Infrastructure.Persistence;
 public sealed class ArgusDbContext(DbContextOptions<ArgusDbContext> options) : DbContext(options)
 {
     public DbSet<Case> Cases => Set<Case>();
+    public DbSet<CaseCommandPolicy> CaseCommandPolicies => Set<CaseCommandPolicy>();
     public DbSet<ActivationToken> ActivationTokens => Set<ActivationToken>();
     public DbSet<DeviceSource> DeviceSources => Set<DeviceSource>();
     public DbSet<FcmTokenBinding> FcmTokenBindings => Set<FcmTokenBinding>();

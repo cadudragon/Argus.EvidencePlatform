@@ -10,4 +10,5 @@ public sealed record RequestScreenshotResult(
     public static RequestScreenshotResult NotFound() => new(RequestScreenshotOutcome.NotFound, null);
     public static RequestScreenshotResult Gone() => new(RequestScreenshotOutcome.Gone, null);
     public static RequestScreenshotResult Failed() => new(RequestScreenshotOutcome.Failed, null);
+    public static RequestScreenshotResult Conflict() => new(RequestScreenshotOutcome.Conflict, null);
 }

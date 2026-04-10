@@ -162,18 +162,16 @@ internal sealed class TestEvidenceBlobReader(TestBlobStore blobStore) : IEvidenc
 
 public sealed class TestDeviceCommandDispatcher : IDeviceCommandDispatcher
 {
-    public List<(string DeviceId, string FcmToken)> ScreenshotRequests { get; } = [];
+    public List<DeviceCommandDispatchRequest> ScreenshotRequests { get; } = [];
 
     public DeviceCommandDispatchResult NextResult { get; set; } =
         new(DeviceCommandDispatchStatus.Success, "test-message-id");
 
-    public Task<DeviceCommandDispatchResult> RequestScreenshotAsync(
-        Guid firebaseAppId,
-        string deviceId,
-        string fcmToken,
+    public Task<DeviceCommandDispatchResult> DispatchAsync(
+        DeviceCommandDispatchRequest request,
         CancellationToken cancellationToken)
     {
-        ScreenshotRequests.Add((deviceId, fcmToken));
+        ScreenshotRequests.Add(request);
         return Task.FromResult(NextResult);
     }
 }

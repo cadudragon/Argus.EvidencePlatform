@@ -10,7 +10,9 @@ public sealed class RequestScreenshotHandler(
     IDeviceSourceRepository deviceSourceRepository,
     IFirebaseAppRoutingResolver firebaseAppRoutingResolver,
     IFcmTokenBindingRepository fcmTokenBindingRepository,
+    ICaseCommandPolicyRepository caseCommandPolicyRepository,
     IDeviceCommandDispatcher deviceCommandDispatcher,
+    ICommandNonceGenerator commandNonceGenerator,
     IAuditRepository auditRepository,
     IClock clock,
     IUnitOfWork unitOfWork)
@@ -46,10 +48,28 @@ public sealed class RequestScreenshotHandler(
             return RequestScreenshotResult.NotFound();
         }
 
-        var dispatch = await deviceCommandDispatcher.RequestScreenshotAsync(
-            firebaseApp.FirebaseAppId,
-            normalizedDeviceId,
-            binding.FcmToken,
+        if (!binding.HasCommandKey())
+        {
+            return RequestScreenshotResult.Conflict();
+        }
+
+        await caseCommandPolicyRepository.GetOrCreateDefaultAsync(deviceSource.CaseId, now, cancellationToken);
+
+        var dispatch = await deviceCommandDispatcher.DispatchAsync(
+            new DeviceCommandDispatchRequest(
+                firebaseApp.FirebaseAppId,
+                deviceSource.CaseId,
+                normalizedDeviceId,
+                binding.FcmToken,
+                "screenshot",
+                new Dictionary<string, string>(),
+                new DeviceCommandKey(
+                    binding.FcmCommandKeyAlg,
+                    binding.FcmCommandKeyKid,
+                    binding.FcmCommandKeyPublicKey),
+                now,
+                now.AddMinutes(1),
+                commandNonceGenerator.CreateNonce()),
             cancellationToken);
 
         if (dispatch.Status == DeviceCommandDispatchStatus.TokenInvalid)

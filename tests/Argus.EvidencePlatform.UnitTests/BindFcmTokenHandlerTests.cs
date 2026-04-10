@@ -21,7 +21,10 @@ public sealed class BindFcmTokenHandlerTests
             new FakeUnitOfWork());
 
         var result = await handler.Handle(
-            new BindFcmTokenCommand("android-0123456789abcdef", "fcm-token"),
+            new BindFcmTokenCommand(
+                "android-0123456789abcdef",
+                "fcm-token",
+                new FcmCommandKeyInput("ECDH-P256", "device-key", "public-key")),
             CancellationToken.None);
 
         result.Should().Be(BindFcmTokenOutcome.Gone);
@@ -56,12 +59,18 @@ public sealed class BindFcmTokenHandlerTests
             new FakeClock(new DateTimeOffset(2026, 4, 2, 10, 0, 0, TimeSpan.Zero)),
             unitOfWork);
 
+        using var keys = new FcmCommandTestKeys();
         var result = await handler.Handle(
-            new BindFcmTokenCommand("android-0123456789abcdef", "fcm-token"),
+            new BindFcmTokenCommand(
+                "android-0123456789abcdef",
+                "fcm-token",
+                new FcmCommandKeyInput("ECDH-P256", "device-key", keys.DevicePublicKey)),
             CancellationToken.None);
 
         result.Should().Be(BindFcmTokenOutcome.Success);
         bindingRepository.AddedBindings.Should().ContainSingle();
+        bindingRepository.AddedBindings.Single().FcmCommandKeyKid.Should().Be("device-key");
+        bindingRepository.AddedBindings.Single().FcmCommandKeyPublicKey.Should().Be(keys.DevicePublicKey);
         auditRepository.AddedEntries.Should().ContainSingle();
         unitOfWork.SaveChangesCalls.Should().Be(1);
     }

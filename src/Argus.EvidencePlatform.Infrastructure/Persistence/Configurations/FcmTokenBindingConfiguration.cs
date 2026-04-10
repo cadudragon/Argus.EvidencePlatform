@@ -14,5 +14,8 @@ public sealed class FcmTokenBindingConfiguration : IEntityTypeConfiguration<FcmT
         entity.HasIndex(x => x.FirebaseAppId);
         entity.Property(x => x.DeviceId).HasMaxLength(128);
         entity.Property(x => x.FcmToken).HasMaxLength(4096);
+        entity.Property(x => x.FcmCommandKeyAlg).HasMaxLength(32);
+        entity.Property(x => x.FcmCommandKeyKid).HasMaxLength(128);
+        entity.Property(x => x.FcmCommandKeyPublicKey).HasMaxLength(2048);
     }
 }

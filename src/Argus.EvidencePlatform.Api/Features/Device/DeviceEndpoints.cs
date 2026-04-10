@@ -47,7 +47,13 @@ public static class DeviceEndpoints
         CancellationToken cancellationToken)
     {
         var result = await bus.InvokeAsync<BindFcmTokenOutcome>(
-            new BindFcmTokenCommand(request.DeviceId, request.FcmToken),
+            new BindFcmTokenCommand(
+                request.DeviceId,
+                request.FcmToken,
+                new FcmCommandKeyInput(
+                    request.FcmCommandKey.Alg,
+                    request.FcmCommandKey.Kid,
+                    request.FcmCommandKey.PublicKey)),
             cancellationToken);
 
         return result == BindFcmTokenOutcome.Success
@@ -68,6 +74,7 @@ public static class DeviceEndpoints
         {
             RequestScreenshotOutcome.Success => Results.Accepted($"/api/device-commands/screenshot/{result.Response!.DeviceId}", result.Response),
             RequestScreenshotOutcome.NotFound => Results.NotFound(),
+            RequestScreenshotOutcome.Conflict => Results.Conflict(),
             RequestScreenshotOutcome.Gone => Results.StatusCode(StatusCodes.Status410Gone),
             _ => Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
         };

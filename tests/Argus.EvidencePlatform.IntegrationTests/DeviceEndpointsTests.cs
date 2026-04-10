@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using Argus.EvidencePlatform.Application.Common.Abstractions;
 using Argus.EvidencePlatform.Contracts.Cases;
 using Argus.EvidencePlatform.Contracts.Device;
 using Argus.EvidencePlatform.Contracts.Enrollment;
 using Argus.EvidencePlatform.Domain.Enrollment;
+using Argus.EvidencePlatform.Infrastructure.Firebase;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -48,7 +50,7 @@ public sealed class DeviceEndpointsTests : IClassFixture<ApiWebApplicationFactor
 
         var response = await client.PutAsJsonAsync(
             "/api/fcm-token",
-            new UpdateFcmTokenRequest("android-device-fcm-ok", "fcm-token"));
+            CreateFcmTokenRequest("android-device-fcm-ok", "fcm-token"));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -60,9 +62,42 @@ public sealed class DeviceEndpointsTests : IClassFixture<ApiWebApplicationFactor
 
         var response = await client.PutAsJsonAsync(
             "/api/fcm-token",
-            new UpdateFcmTokenRequest("android-device-fcm-missing", "fcm-token"));
+            CreateFcmTokenRequest("android-device-fcm-missing", "fcm-token"));
 
         response.StatusCode.Should().Be(HttpStatusCode.Gone);
+    }
+
+    [Fact]
+    public async Task Put_fcm_token_should_return_bad_request_when_command_key_is_missing()
+    {
+        using var client = _factory.CreateClient();
+        await ActivateDeviceAsync(client, "CASE-2026-605", "823456789", "android-device-fcm-missing-key");
+
+        var response = await client.PutAsJsonAsync(
+            "/api/fcm-token",
+            new
+            {
+                deviceId = "android-device-fcm-missing-key",
+                fcmToken = "fcm-token"
+            });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Put_fcm_token_should_return_bad_request_when_command_key_public_key_is_invalid()
+    {
+        using var client = _factory.CreateClient();
+        await ActivateDeviceAsync(client, "CASE-2026-606", "923456789", "android-device-fcm-invalid-key");
+
+        var response = await client.PutAsJsonAsync(
+            "/api/fcm-token",
+            new UpdateFcmTokenRequest(
+                "android-device-fcm-invalid-key",
+                "fcm-token",
+                new FcmCommandKeyRequest("ECDH-P256", "device-ecdh-invalid", "not-a-key")));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -74,7 +109,7 @@ public sealed class DeviceEndpointsTests : IClassFixture<ApiWebApplicationFactor
         await ActivateDeviceAsync(client, "CASE-2026-603", "623456789", "android-device-shot-ok");
         await client.PutAsJsonAsync(
             "/api/fcm-token",
-            new UpdateFcmTokenRequest("android-device-shot-ok", "fcm-token-shot"));
+            CreateFcmTokenRequest("android-device-shot-ok", "fcm-token-shot"));
 
         var response = await client.PostAsJsonAsync(
             "/api/device-commands/screenshot",
@@ -87,6 +122,8 @@ public sealed class DeviceEndpointsTests : IClassFixture<ApiWebApplicationFactor
         payload.CaseId.Should().Be("CASE-2026-603");
         payload.MessageId.Should().Be("firebase-message-1");
         _factory.DeviceCommandDispatcher.ScreenshotRequests.Should().ContainSingle();
+        _factory.DeviceCommandDispatcher.ScreenshotRequests.Single().DeviceCommandKey.Kid.Should().Be("device-ecdh-android-device-shot-ok");
+        _factory.DeviceCommandDispatcher.ScreenshotRequests.Single().Command.Should().Be("screenshot");
     }
 
     [Fact]
@@ -131,5 +168,15 @@ public sealed class DeviceEndpointsTests : IClassFixture<ApiWebApplicationFactor
 
         var activateResponse = await client.PostAsJsonAsync("/api/activate", new ActivationRequest(token, deviceId));
         activateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    private static UpdateFcmTokenRequest CreateFcmTokenRequest(string deviceId, string fcmToken)
+    {
+        using var ecdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        var publicKey = FcmCommandEnvelopeEncryptor.EncodeBase64UrlNoPadding(ecdh.ExportSubjectPublicKeyInfo());
+        return new UpdateFcmTokenRequest(
+            deviceId,
+            fcmToken,
+            new FcmCommandKeyRequest("ECDH-P256", $"device-ecdh-{deviceId}", publicKey));
     }
 }

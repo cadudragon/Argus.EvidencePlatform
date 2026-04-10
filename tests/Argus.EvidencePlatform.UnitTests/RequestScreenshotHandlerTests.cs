@@ -37,7 +37,15 @@ public sealed class RequestScreenshotHandlerTests
         {
             ExistingRouting = new FirebaseAppRoutingContext(firebaseAppId, "fb-local-primary", "argus-local-primary")
         };
-        var binding = FcmTokenBinding.Bind(Guid.NewGuid(), firebaseAppId, deviceSource.DeviceId, "fcm-token", new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
+        var binding = FcmTokenBinding.Bind(
+            Guid.NewGuid(),
+            firebaseAppId,
+            deviceSource.DeviceId,
+            "fcm-token",
+            "ECDH-P256",
+            "device-key-001",
+            "public-key-001",
+            new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
         var bindingRepo = new FakeFcmTokenBindingRepository { ExistingBinding = binding };
         var dispatcher = new FakeDeviceCommandDispatcher
         {
@@ -46,7 +54,13 @@ public sealed class RequestScreenshotHandlerTests
         var auditRepo = new FakeAuditRepository();
         var unitOfWork = new FakeUnitOfWork();
 
-        var handler = BuildHandler(deviceRepo, routingResolver, bindingRepo, dispatcher, auditRepo, unitOfWork);
+        var handler = BuildHandler(
+            deviceRepo,
+            routingResolver,
+            bindingRepo,
+            dispatcher: dispatcher,
+            auditRepository: auditRepo,
+            unitOfWork: unitOfWork);
 
         var result = await handler.Handle(
             new RequestScreenshotCommand(deviceSource.DeviceId),
@@ -56,6 +70,9 @@ public sealed class RequestScreenshotHandlerTests
         result.Response.Should().NotBeNull();
         result.Response!.MessageId.Should().Be("firebase-message-01");
         dispatcher.Requests.Should().ContainSingle();
+        dispatcher.Requests.Single().Command.Should().Be("screenshot");
+        dispatcher.Requests.Single().DeviceCommandKey.Kid.Should().Be("device-key-001");
+        dispatcher.Requests.Single().Nonce.Should().Be("nonce-001");
         auditRepo.AddedEntries.Should().ContainSingle();
         unitOfWork.SaveChangesCalls.Should().Be(1);
     }
@@ -76,7 +93,15 @@ public sealed class RequestScreenshotHandlerTests
         {
             ExistingRouting = new FirebaseAppRoutingContext(firebaseAppId, "fb-local-primary", "argus-local-primary")
         };
-        var binding = FcmTokenBinding.Bind(Guid.NewGuid(), firebaseAppId, deviceSource.DeviceId, "fcm-token", new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
+        var binding = FcmTokenBinding.Bind(
+            Guid.NewGuid(),
+            firebaseAppId,
+            deviceSource.DeviceId,
+            "fcm-token",
+            "ECDH-P256",
+            "device-key-001",
+            "public-key-001",
+            new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
         var bindingRepo = new FakeFcmTokenBindingRepository { ExistingBinding = binding };
         var dispatcher = new FakeDeviceCommandDispatcher
         {
@@ -85,7 +110,13 @@ public sealed class RequestScreenshotHandlerTests
         var auditRepo = new FakeAuditRepository();
         var unitOfWork = new FakeUnitOfWork();
 
-        var handler = BuildHandler(deviceRepo, routingResolver, bindingRepo, dispatcher, auditRepo, unitOfWork);
+        var handler = BuildHandler(
+            deviceRepo,
+            routingResolver,
+            bindingRepo,
+            dispatcher: dispatcher,
+            auditRepository: auditRepo,
+            unitOfWork: unitOfWork);
 
         var result = await handler.Handle(
             new RequestScreenshotCommand(deviceSource.DeviceId),
@@ -96,10 +127,56 @@ public sealed class RequestScreenshotHandlerTests
         unitOfWork.SaveChangesCalls.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Handle_should_return_conflict_when_binding_has_no_command_key()
+    {
+        var firebaseAppId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var deviceSource = DeviceSource.Register(
+            Guid.NewGuid(),
+            "android-0123456789abcdef",
+            Guid.NewGuid(),
+            "CASE-2026-803",
+            new DateTimeOffset(2026, 4, 2, 9, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 4, 2, 11, 0, 0, TimeSpan.Zero));
+        var deviceRepo = new FakeDeviceSourceRepository { ExistingSource = deviceSource };
+        var routingResolver = new FakeFirebaseAppRoutingResolver
+        {
+            ExistingRouting = new FirebaseAppRoutingContext(firebaseAppId, "fb-local-primary", "argus-local-primary")
+        };
+        var binding = FcmTokenBinding.Bind(
+            Guid.NewGuid(),
+            firebaseAppId,
+            deviceSource.DeviceId,
+            "fcm-token",
+            "ECDH-P256",
+            "device-key-001",
+            "public-key-001",
+            new DateTimeOffset(2026, 4, 2, 9, 30, 0, TimeSpan.Zero));
+        typeof(FcmTokenBinding).GetProperty(nameof(FcmTokenBinding.FcmCommandKeyAlg))!.SetValue(binding, string.Empty);
+        typeof(FcmTokenBinding).GetProperty(nameof(FcmTokenBinding.FcmCommandKeyKid))!.SetValue(binding, string.Empty);
+        typeof(FcmTokenBinding).GetProperty(nameof(FcmTokenBinding.FcmCommandKeyPublicKey))!.SetValue(binding, string.Empty);
+        var bindingRepo = new FakeFcmTokenBindingRepository { ExistingBinding = binding };
+        var dispatcher = new FakeDeviceCommandDispatcher();
+
+        var handler = BuildHandler(
+            deviceRepo,
+            routingResolver,
+            bindingRepo,
+            dispatcher: dispatcher);
+
+        var result = await handler.Handle(
+            new RequestScreenshotCommand(deviceSource.DeviceId),
+            CancellationToken.None);
+
+        result.Outcome.Should().Be(RequestScreenshotOutcome.Conflict);
+        dispatcher.Requests.Should().BeEmpty();
+    }
+
     private static RequestScreenshotHandler BuildHandler(
         FakeDeviceSourceRepository? deviceSourceRepository = null,
         FakeFirebaseAppRoutingResolver? routingResolver = null,
         FakeFcmTokenBindingRepository? fcmTokenBindingRepository = null,
+        FakeCaseCommandPolicyRepository? caseCommandPolicyRepository = null,
         FakeDeviceCommandDispatcher? dispatcher = null,
         FakeAuditRepository? auditRepository = null,
         FakeUnitOfWork? unitOfWork = null)
@@ -108,7 +185,9 @@ public sealed class RequestScreenshotHandlerTests
             deviceSourceRepository ?? new FakeDeviceSourceRepository(),
             routingResolver ?? new FakeFirebaseAppRoutingResolver(),
             fcmTokenBindingRepository ?? new FakeFcmTokenBindingRepository(),
+            caseCommandPolicyRepository ?? new FakeCaseCommandPolicyRepository(),
             dispatcher ?? new FakeDeviceCommandDispatcher(),
+            new FakeCommandNonceGenerator(),
             auditRepository ?? new FakeAuditRepository(),
             new FakeClock(new DateTimeOffset(2026, 4, 2, 10, 0, 0, TimeSpan.Zero)),
             unitOfWork ?? new FakeUnitOfWork());
@@ -163,13 +242,29 @@ public sealed class RequestScreenshotHandlerTests
     private sealed class FakeDeviceCommandDispatcher : IDeviceCommandDispatcher
     {
         public DeviceCommandDispatchResult Result { get; set; } = new(DeviceCommandDispatchStatus.Success, "message-id");
-        public List<(Guid FirebaseAppId, string DeviceId, string FcmToken)> Requests { get; } = [];
+        public List<DeviceCommandDispatchRequest> Requests { get; } = [];
 
-        public Task<DeviceCommandDispatchResult> RequestScreenshotAsync(Guid firebaseAppId, string deviceId, string fcmToken, CancellationToken cancellationToken)
+        public Task<DeviceCommandDispatchResult> DispatchAsync(DeviceCommandDispatchRequest request, CancellationToken cancellationToken)
         {
-            Requests.Add((firebaseAppId, deviceId, fcmToken));
+            Requests.Add(request);
             return Task.FromResult(Result);
         }
+    }
+
+    private sealed class FakeCaseCommandPolicyRepository : ICaseCommandPolicyRepository
+    {
+        public Task<Argus.EvidencePlatform.Domain.Cases.CaseCommandPolicy> GetOrCreateDefaultAsync(
+            Guid caseId,
+            DateTimeOffset now,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Argus.EvidencePlatform.Domain.Cases.CaseCommandPolicy.CreateDefault(Guid.NewGuid(), caseId, now));
+        }
+    }
+
+    private sealed class FakeCommandNonceGenerator : ICommandNonceGenerator
+    {
+        public string CreateNonce() => "nonce-001";
     }
 
     private sealed class FakeAuditRepository : IAuditRepository

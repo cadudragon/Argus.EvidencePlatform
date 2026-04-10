@@ -78,6 +78,10 @@ Treat these values as operational hints, not stable domain constants.
 
 - `PUT /api/fcm-token`
 - Plain JSON only
+- Includes `fcmCommandKey` for encrypted command delivery:
+  - `alg`: `ECDH-P256`
+  - `kid`: device command key id
+  - `publicKey`: base64url-no-padding SPKI ECDH P-256 public key
 
 ### Screenshot Ingestion
 
@@ -109,8 +113,14 @@ Implementation detail:
 
 - `POST /api/device-commands/screenshot`
 - Command dispatch uses Firebase Admin SDK
-- Message payload currently sent to the Android app:
-  - `{"cmd":"screenshot"}`
+- Production FCM data payload is encrypted and contains only:
+  - `enc`
+  - `alg`
+  - `kid`
+  - `dkid`
+  - `iv`
+  - `ct`
+- Plaintext `{"cmd":"screenshot"}` is not the production contract and is only allowed behind explicit debug fallback configuration.
 
 The operational helpers are:
 - [request-screenshot.ps1](C:\Src\Argus.EvidencePlatform\scripts\request-screenshot.ps1)
@@ -148,6 +158,7 @@ Current architecture:
 - case creation assigns exactly one active Firebase app for new cases
 - device activation materializes the case assignment, not choose the Firebase app
 - `PUT /api/fcm-token` and `POST /api/device-commands/screenshot` resolve routing from the case/device context
+- `BB-04.1` encrypted FCM command envelope replaces plaintext command data as the production FCM command contract
 - detailed implementation planning and closure criteria live in [docs/backend-bb-07.1-multi-firebase-plan.md](C:\Src\Argus.EvidencePlatform\docs\backend-bb-07.1-multi-firebase-plan.md)
 
 ## Storage

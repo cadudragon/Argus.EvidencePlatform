@@ -501,9 +501,31 @@ Request:
 ```json
 {
   "deviceId": "android-0123456789abcdef",
-  "fcmToken": "fcm-token-value"
+  "fcmToken": "fcm-token-value",
+  "fcmCommandKey": {
+    "alg": "ECDH-P256",
+    "kid": "device-ecdh-0123456789abcdef",
+    "publicKey": "base64url-spki-public-key"
+  }
 }
 ```
+
+`fcmCommandKey.publicKey` é a chave pública SPKI ECDH P-256 do device em base64url sem padding. A private key correspondente fica no Android Keystore e nunca é enviada ao backend.
+
+Comandos FCM de produção usam envelope cifrado:
+
+```json
+{
+  "enc": "1",
+  "alg": "ECDH-P256-HKDF-SHA256+A256GCM",
+  "kid": "backend-ecdh-dev-2026-04",
+  "dkid": "device-ecdh-0123456789abcdef",
+  "iv": "base64url-iv",
+  "ct": "base64url-ciphertext-plus-tag"
+}
+```
+
+O payload plaintext `{"cmd":"screenshot"}` não é mais contrato de produção.
 
 Responses:
 

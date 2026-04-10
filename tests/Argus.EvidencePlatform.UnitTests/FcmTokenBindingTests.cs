@@ -16,16 +16,31 @@ public sealed class FcmTokenBindingTests
             firebaseAppId,
             "  android-0123456789abcdef  ",
             "  token-001  ",
+            "  ECDH-P256  ",
+            "  device-key-001  ",
+            "  public-key-001  ",
             boundAt);
 
         result.FirebaseAppId.Should().Be(firebaseAppId);
         result.DeviceId.Should().Be("android-0123456789abcdef");
         result.FcmToken.Should().Be("token-001");
+        result.FcmCommandKeyAlg.Should().Be("ECDH-P256");
+        result.FcmCommandKeyKid.Should().Be("device-key-001");
+        result.FcmCommandKeyPublicKey.Should().Be("public-key-001");
+        result.HasCommandKey().Should().BeTrue();
 
-        result.UpdateToken(nextFirebaseAppId, "token-002", boundAt.AddMinutes(5));
+        result.UpdateToken(
+            nextFirebaseAppId,
+            "token-002",
+            "ECDH-P256",
+            "device-key-002",
+            "public-key-002",
+            boundAt.AddMinutes(5));
 
         result.FirebaseAppId.Should().Be(nextFirebaseAppId);
         result.FcmToken.Should().Be("token-002");
+        result.FcmCommandKeyKid.Should().Be("device-key-002");
+        result.FcmCommandKeyPublicKey.Should().Be("public-key-002");
         result.UpdatedAt.Should().Be(boundAt.AddMinutes(5));
     }
 }

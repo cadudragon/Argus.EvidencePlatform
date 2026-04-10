@@ -41,6 +41,9 @@ public static class DependencyInjection
             .AddOptions<FirebaseOptions>()
             .Bind(builder.Configuration.GetSection(FirebaseOptions.SectionName));
         builder.Services
+            .AddOptions<FcmCommandEncryptionOptions>()
+            .Bind(builder.Configuration.GetSection(FcmCommandEncryptionOptions.SectionName));
+        builder.Services
             .AddOptions<InfrastructureBootstrapOptions>()
             .Bind(builder.Configuration.GetSection(InfrastructureBootstrapOptions.SectionName));
 
@@ -48,12 +51,16 @@ public static class DependencyInjection
         builder.Services.AddSingleton(sp => CreateBlobServiceClient(sp, builder.Configuration));
         builder.Services.AddSingleton<FirebaseAppRegistry>();
         builder.Services.AddHostedService<FirebaseBootstrapService>();
+        builder.Services.AddSingleton<IFcmCommandEnvelopeEncryptor, FcmCommandEnvelopeEncryptor>();
+        builder.Services.AddSingleton<IFcmCommandDataPayloadBuilder, FcmCommandDataPayloadBuilder>();
+        builder.Services.AddSingleton<ICommandNonceGenerator, GuidCommandNonceGenerator>();
         builder.Services.AddSingleton<IDeviceCommandDispatcher, FirebaseDeviceCommandDispatcher>();
         builder.Services.AddSingleton<IClock, SystemClock>();
         builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         builder.Services.AddScoped<IBlobStagingService, AzureBlobStagingService>();
         builder.Services.AddScoped<IEvidenceBlobReader, AzureEvidenceBlobReader>();
         builder.Services.AddScoped<ICaseRepository, CaseRepository>();
+        builder.Services.AddScoped<ICaseCommandPolicyRepository, CaseCommandPolicyRepository>();
         builder.Services.AddScoped<IActivationTokenRepository, ActivationTokenRepository>();
         builder.Services.AddScoped<IDeviceSourceRepository, DeviceSourceRepository>();
         builder.Services.AddScoped<IFcmTokenBindingRepository, FcmTokenBindingRepository>();

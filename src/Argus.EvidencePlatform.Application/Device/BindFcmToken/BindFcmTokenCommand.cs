@@ -2,4 +2,5 @@ namespace Argus.EvidencePlatform.Application.Device.BindFcmToken;
 
 public sealed record BindFcmTokenCommand(
     string DeviceId,
-    string FcmToken);
+    string FcmToken,
+    FcmCommandKeyInput FcmCommandKey);
