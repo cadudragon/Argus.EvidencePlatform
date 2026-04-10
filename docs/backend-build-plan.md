@@ -107,7 +107,7 @@ Activation token + deviceId
 deviceId + fcmToken
   -> PUT /api/fcm-token
     -> Device/BindFcmToken
-      -> grava ou atualiza binding do canal FCM
+      -> grava ou atualiza binding do canal FCM e a chave pública ECDH do device
 ```
 
 ```text
@@ -116,6 +116,7 @@ Operador pede screenshot
     -> Device/RequestScreenshot
       -> resolve deviceId -> fcmToken
       -> envia envelope FCM cifrado enc/alg/kid/dkid/iv/ct
+      -> deriva a chave AES-GCM com raw ECDH shared secret + HKDF-SHA256 para interoperar com Android
 ```
 
 ```text

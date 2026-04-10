@@ -68,6 +68,8 @@ public sealed class FcmCommandEnvelopeEncryptorTests
 
         payload.Keys.Should().BeEquivalentTo("enc", "alg", "kid", "dkid", "iv", "ct");
         payload.Should().NotContainKey("cmd");
+        payload.Values.Should().NotContain("screenshot");
+        payload.Values.Should().NotContain(value => value.Contains("\"cmd\"", StringComparison.Ordinal));
         payload["dkid"].Should().Be("device-ecdh-0123456789abcdef");
     }
 
@@ -112,7 +114,7 @@ public sealed class FcmCommandEnvelopeEncryptorTests
     {
         using var backendPublic = ECDiffieHellman.Create();
         backendPublic.ImportSubjectPublicKeyInfo(keys.BackendKey.ExportSubjectPublicKeyInfo(), out _);
-        var sharedSecret = keys.DeviceKey.DeriveKeyMaterial(backendPublic.PublicKey);
+        var sharedSecret = keys.DeviceKey.DeriveRawSecretAgreement(backendPublic.PublicKey);
         var salt = Encoding.UTF8.GetBytes("Argus-FCM-v1" + backendKeyId + deviceKeyId);
         var info = Encoding.UTF8.GetBytes("Argus FCM Command Envelope v1");
         return HkdfSha256(sharedSecret, salt, info, FcmCommandEnvelopeContract.KeySizeBytes);

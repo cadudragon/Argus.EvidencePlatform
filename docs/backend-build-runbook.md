@@ -173,6 +173,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
   - `FcmTokenBinding` guarda `fcmCommandKey.alg`, `fcmCommandKey.kid` e `fcmCommandKey.publicKey`
   - `POST /api/device-commands/screenshot` mantém o endpoint existente, mas o dispatcher envia `enc/alg/kid/dkid/iv/ct`
   - comando interno `screenshot` contém `iat`, `exp` e `nonce`
+  - a chave AES-GCM do envelope é derivada com raw ECDH P-256 shared secret + HKDF-SHA256 para interoperar com Android
   - política mínima por caso cria `streamStartFps = 2` como default para comandos internos futuros
   - plaintext FCM fica fora do contrato de produção e só pode existir por fallback debug explícito
 - Prova obrigatória:
@@ -186,6 +187,22 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
   - [x] private key do device nunca sai do Android
   - [x] backend usa private key configurada por segredo, não commitada
   - [x] não implementa live/video, mTLS, tickle/fetch ou wrapper Ed25519
+
+Nota de interoperabilidade:
+
+- backend e Android usam raw ECDH P-256 shared secret como entrada do HKDF
+- no .NET isso significa `DeriveRawSecretAgreement()`, não `DeriveKeyMaterial()`
+
+Prova executável registada:
+
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.UnitTests\Argus.EvidencePlatform.UnitTests.csproj --filter FcmCommandEnvelopeEncryptorTests --no-restore`
+- `C:\Progra~1\dotnet\dotnet.exe test tests\Argus.EvidencePlatform.UnitTests\Argus.EvidencePlatform.UnitTests.csproj --no-restore`
+
+Resultado observado:
+
+- teste focado do envelope cifrado verde
+- suite unitária backend verde
+- prova real local: screenshot on-demand cifrado foi entregue ao Android, decriptado, capturado, uploaded e persistido
 
 ### BB-05 — Ingestão de screenshot com gzip scoped
 
@@ -216,7 +233,7 @@ Este runbook divide a evolução do backend em entregáveis pequenos (`BB`), com
   - `scripts/export-case-screenshots.ps1`
   - download de blobs do Azurite para pasta local
 - Prova obrigatória:
-  - screenshots exportadas para `C:\Src\exported-screenshots`
+  - screenshots exportadas para `C:\Src\Argus.EvidencePlatform\docs\exported-screenshots`
 - Gate checks:
   - [x] não depende de memória da sessão
   - [x] funciona para múltiplas imagens do mesmo caso

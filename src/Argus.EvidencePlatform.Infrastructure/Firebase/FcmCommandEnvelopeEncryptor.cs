@@ -97,7 +97,7 @@ public sealed class FcmCommandEnvelopeEncryptor(IOptions<FcmCommandEncryptionOpt
             throw new InvalidOperationException("Device public key contains trailing data.");
         }
 
-        var sharedSecret = backendEcdh.DeriveKeyMaterial(deviceEcdh.PublicKey);
+        var sharedSecret = backendEcdh.DeriveRawSecretAgreement(deviceEcdh.PublicKey);
         var salt = Encoding.UTF8.GetBytes(HkdfSaltPrefix + backendKeyId + deviceKeyId);
         var info = Encoding.UTF8.GetBytes(HkdfInfo);
         return HkdfSha256(sharedSecret, salt, info, FcmCommandEnvelopeContract.KeySizeBytes);

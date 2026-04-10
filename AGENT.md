@@ -6,6 +6,12 @@ This repository is the .NET backend for the Android client `com.argus.android`.
 
 Keep this file technical and operational. Do not place soft product rationale here.
 
+Android repository boundary:
+
+- Do not modify files under `C:\Src\Argus`.
+- Treat the Android repository as read-only unless the user gives explicit approval in the current turn to edit it.
+- Backend work may inspect Android contracts/logs for interoperability, but fixes must stay in this backend repository unless explicitly approved.
+
 Canonical planning references:
 
 - [docs/backend-build-plan.md](C:\Src\Argus.EvidencePlatform\docs\backend-build-plan.md)
@@ -52,7 +58,7 @@ These are current local-machine conventions used in this repository workflow:
 
 - API stdout log: `C:\Src\argus-api.stdout.log`
 - API stderr log: `C:\Src\argus-api.stderr.log`
-- Temporary exported screenshots folder: `C:\Src\exported-screenshots`
+- Exported screenshots folder: `C:\Src\Argus.EvidencePlatform\docs\exported-screenshots`
 - Firebase service-account JSON stays outside the repo and is referenced by user-secrets
 
 ## Current Operational Test State
@@ -136,6 +142,10 @@ The backend code currently reads:
 - `Firebase:Apps:{n}:ProjectId`
 - `Firebase:Apps:{n}:ServiceAccountPath`
 - `Firebase:Apps:{n}:IsActiveForNewCases`
+- `Firebase:CommandEncryption:Enabled`
+- `Firebase:CommandEncryption:BackendKeyId`
+- `Firebase:CommandEncryption:BackendPrivateKey`
+- `Firebase:CommandEncryption:AllowPlaintextDebugFallback`
 
 For local development, store these with `dotnet user-secrets` on the API project. Do not commit service-account JSON files.
 
@@ -154,7 +164,7 @@ Current architecture:
 - application schema DDL no longer lives in runtime bootstrap SQL
 - existing local databases from before `BB-07.3` require an explicit data cutover, not runtime adoption
 - the canonical local cutover is `export relational data + Azurite snapshot -> rebuild via EF migrations -> import -> validate`
-- the next structural backend block is `BB-08`
+- the next structural backend block is `BB-08.1`
 - case creation assigns exactly one active Firebase app for new cases
 - device activation materializes the case assignment, not choose the Firebase app
 - `PUT /api/fcm-token` and `POST /api/device-commands/screenshot` resolve routing from the case/device context
